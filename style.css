@@ -1,0 +1,135 @@
+body {
+      background: url(piano.jpeg) fixed;
+      color: aliceblue
+	  /*background-image: url("fdrl-knives-02.jpg")
+      background-repeat: no-repeat;
+      background-attachment: scroll;
+      background-position: center center;*/
+	}
+
+h2.about {
+    margin-left: 400px;
+}
+
+p.about1 {
+    font-size: 14pt;
+    margin-top: 35px;
+    margin-right: 75px;
+}
+
+p.about2 {
+    font-size: 14pt;
+    margin-right: 75px;
+}
+
+img{
+    float:left;
+    margin: 0 75px 0 50px;
+}
+
+img.social_icons {
+    margin: 0 20px 20px 15px;
+    height: 40px;
+    width: 40px;
+}
+
+img.social_icons_left {
+    margin: 0 20px 20px 50px;
+    height: 40px;
+    width: 40px;
+}
+
+h2.contact {
+    margin-left: 50px;
+    margin-top: 50px;
+}
+
+p.contact {
+    font-size: 14pt;
+    margin-left: 50px;
+}
+
+div.footer {
+    position: fixed;
+    text-align: center;
+    bottom: 15px;
+    width: 100%;
+}
+
+nav {
+    background-color: rgba(100,100,100,0.35);
+    padding:10px 0;
+}
+nav ul {
+    list-style-type:none;
+    margin:0;
+    padding:0;
+}
+nav ul li {
+    display:inline-block;
+    position:relative;
+}
+
+nav li ul {    
+    background-color:rgba(75,75,75, 0.5);
+    position:absolute;
+    left:0;
+    top:40px; /* make this equal to the line-height of the links (specified below) */
+    width:200px;
+}
+nav li li {
+    position:relative;
+    margin:0;
+    display:block;
+}
+nav li li ul {
+    position:absolute;
+    top:0;
+    left:200px; /* make this equal to the width of the sub nav above */
+    margin:0;
+}
+
+/* style all links */
+nav a {
+    line-height:40px;
+    padding:0 12px;
+    margin:0 12px;
+}
+nav a {
+    color:#fff;
+    text-decoration:none;
+    display:block;
+}
+nav a:hover,
+nav a:focus,
+nav a:active {
+    color:rgb(50,50,50);
+}
+
+/* style sub level links */
+nav li li a {
+    border-bottom:solid 1px rgb(200,50,50);
+    margin:0 10px;
+    padding:0;
+}
+nav li li:last-child a {
+    border-bottom:none;
+}
+
+/* show arrows for dropdowns */
+nav li.dropdown > a {
+    background-image:url('../img/arrow-down.png');
+    background-position:right 20px;
+    background-repeat:no-repeat;
+}
+
+nav li li.dropdown > a {
+    background-image:url('../img/arrow-right.png');
+    background-position:right 16px;
+    background-repeat:no-repeat;
+}
+
+/* hide sub menu links */
+ul.sub-menu {
+    display:none;
+}
