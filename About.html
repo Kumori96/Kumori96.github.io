@@ -2,39 +2,59 @@
 <html>
    <head>
        <title> Kevin's Website </title>
-       <link rel="stylesheet" type="text/css" href="style.css" />
+       <link rel="stylesheet" type="text/css" href="style/style.css" />
+       <link href="https://fonts.googleapis.com/css?family=Montserrat:300,400,700" rel="stylesheet">
+       <link href="https://fonts.googleapis.com/css?family=Monoton" rel="stylesheet"> 
+       
        
        <meta charset="UTF-8">
    </head>
    <body>
-       <h1> <center> <font color = "white">My Profile</font></center> </h1>
        
-<nav>
-    <ul>
-        <li><a href="About.html">About</a></li>
-        <li><a href="Contact.html">Contact</a></li>
-        <li class="dropdown">
-            <a href="#">Coding Projects</a>
-            <ul class="sub-menu">
-                <li><a href="#">Disk Defragmentation</a></li>
-                <li><a href="#">Airline Scheduling</a></li>
-                <li><a href="#">Knapsack Problem</a></li>
+    <div class="header">
+        <a href="Home.html"><img class="Logo" title="Home" src="images/KC%20Website%20Logo.png"></a>
+        
+        <hr class="top-line">
+        
+        <nav>
+            <ul>
+                <li><a href="About.html">ABOUT</a></li>
+                <li><a href="Contact.html">CONTACT</a></li>
+                <li class="dropdown">
+                    <a href="#">PROJECTS</a>
+                    <ul class="sub-menu">
+                       <li><a href="#">FAT Filesystem</a></li>
+                        <li><a href="#">User-Level Thread Library</a></li>
+                        <li><a href="#">Token Ring Protocol Simulation</a></li>
+                        <li><a href="#">Content-aware Image Resizing</a></li>
+                    </ul>
+                </li>
+                <li><a href="#">MUSIC</a></li>
+                <li><a href="#">WATCHES</a></li>
+                <li><a href="#">KNIVES</a></li>
             </ul>
-        </li>
-        <li><a href="#">Music</a></li>
-    </ul>
-</nav>
-     
+        </nav>
+        
+         <hr class="bottom-line">
+    </div>      
+
+    
        
-    <h2 class="about">About Me</h2>
-        <img src="aenigma___jonada___the_line_by_w_e_z-d6wgan6.jpg" height="300" width="300">
-        <div><p class="about1">Greetings and welcome to my website! My name is Kevin Chung and I am a junior undergraduate student studying computer science at UC Davis. I enjoy learning more about various topics in computer science and am currently trying to find a specialization in the field that I like best. I enjoy coding and have a passion to constantly learn more.</p>
-        <p class="about2">Aside from computer science, I have passions for various other topics. I really enjoy tech in general and consider myself very tech-savvy. I build computers for fun and love taking things apart. I have a deep love for the piano with 14 years of classical and jazz experience. In particular, I love jazz improvisation and composition. I also enjoy dancing of various styles including popping, tutting, animation, krumping, c-walking, and more. In addition, I have various other interests in cooking, tea drinking, watches, and cars. Thanks for visiting!</p></div>
+    <div class="content">
+           
+        <div class="left">
+            <img class="personal_photo" src="images/Personal%20Photo.jpg" height="500" width="325">
+        </div>
+        <div class="right">
+            <h2 class="about">About Me</h2>
+            <p class="about1">Greetings and welcome to my website! My name is Kevin Chung and I'm a recent UC Davis grad with a Computer Science degree. I enjoy learning more about various topics in computer science and am currently trying to find a specialization in the field that I like best. I enjoy coding and have a passion to constantly learn more.</p>
+        <p class="about2">Aside from computer science, I have passions for various other topics. I really enjoy tech in general and consider myself very tech-savvy. I build computers for fun and love taking things apart. I have a deep love for the piano with 18 years of classical and jazz experience. In particular, I love jazz improvisation and composition. I also enjoy dancing of various styles including popping, tutting, animation, krumping, c-walking, and more. In addition, I have various other interests in cooking, tea drinking, watches, and cars. Thanks for visiting!</p>
+        </div>
+    </div>
        
+       <script src="javascript/jquery-3.1.0.min.js"></script>
+       <script src="javascript/dropdown-menu.js"></script>
        
-       <script src="jquery-3.1.0.min.js"></script>
-       <script src="dropdown-menu.js"></script>
-       
-       <div class="footer"> &copy; Copyright Kevin Chung</div>
+       <div class="footer"> <i>Created by Kevin Chung</i></div>
    </body>
 </html>
