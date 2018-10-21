@@ -167,6 +167,7 @@ img.Logo {
 
 div.video {
     text-align: center;
+    margin-top: 75px;
 }
 /*h1.title {
     font-family: 'Monoton', cursive;
@@ -181,6 +182,7 @@ div.video {
 div.content {
     display: flex;
     flex-direction: row;
+    margin-top: 75px;
 }
 
 
@@ -195,6 +197,11 @@ h2.about {
     color: #888;
 }
 
+
+h4.about {
+    margin-left: 350px;
+    margin-top: 10px;
+}
 
 
 p.about1 {
@@ -224,23 +231,29 @@ p.about2 {
 
 
 img.social_icons {
-    margin: 0 20px 20px 15px;
+    margin: 0 10px 20px 0px;
     height: 40px;
     width: 40px;
 }
 
 
+img.social_icons:hover {
+    opacity: 0.5;
+}
 
 img.social_icons_left {
-    margin: 0 20px 20px 50px;
+    margin: 0 10px 20px 37px;
     height: 40px;
     width: 40px;
 }
 
-
+div.social_icons_bottom {
+    text-align: center;
+}
 
 div.ContactWrapper {
     margin-left: 5%;
+    margin-bottom: 75px;
 }
 
 
@@ -262,7 +275,7 @@ p.contact {
 
 
 div.footer {
-    position: absolute;
+    position: relative;
     text-align: center;
     padding-bottom: 23px;
     padding-top: 120px;
@@ -270,4 +283,5 @@ div.footer {
     width: 100%;
     font-size: 10pt;
 }
+
 
