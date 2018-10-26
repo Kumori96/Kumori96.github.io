@@ -1,0 +1,2528 @@
+<!DOCTYPE html>
+<html>
+   <head>
+       <title> Kevin's Website </title>
+       <link rel="stylesheet" type="text/css" href="style/style.css" />
+       <link href="https://fonts.googleapis.com/css?family=Montserrat:300,400,700" rel="stylesheet">
+       <link href="https://fonts.googleapis.com/css?family=Monoton" rel="stylesheet"> 
+       
+       
+       <meta charset="UTF-8">
+   </head>
+   <body>
+       
+       <div class="header">
+            
+           <div class="LogoWrapper">
+                <a href="Home.html"><img class="Logo"  title="Home" src="images/KC%20Website%20Logo.png">
+                    </a>
+           </div>
+            
+           <hr class="top-line">
+
+           <nav>
+               <ul>
+                   <li><a href="About.html" class="main">ABOUT</a></li>
+                   <li><a href="Contact.html" class="main">CONTACT</a> </li>
+                   <li class="dropdown">
+                        <a href="Projects.html" class="main">PROJECTS</a>
+                        <ul class="sub-menu">
+                            <li><a href="#FAT Filesystem">FAT Filesystem</a></li>
+                            <li><a href="#User-Level Thread Library">User-Level Thread Library</a></li>
+                            <li><a href="#Token Ring Protocol Simulation">Token Ring Protocol Simulation</a></li>
+                            <li><a href="#Content-Aware Image Resizing">Content-Aware Image Resizing</a></li>
+                        </ul>
+                   </li>
+                   <li><a href="Music.html" class="main">MUSIC</a></li>
+                   <li><a href="Watches.html" class="main">WATCHES</a></li>
+                   <li><a href="Knives.html" class="main">KNIVES</a></li>
+               </ul>
+           </nav>
+    
+           <hr class="bottom-line">
+            
+       </div>
+       
+       
+       <p class="attention"><b>Note:</b> Below are some coding projects I worked on for academic purposes. Plagiarism is strictly prohibited!</p>
+      
+       <a name="FAT Filesystem"></a>
+       
+       <h2 class="project">FAT Filesystem</h2>
+       
+       <div class="tab">
+           <button class="tabselection1" onclick="showCode(event, 'fs.c')" id="defaultTab1">fs.c</button>
+           <button class="tabselection1" onclick="showCode(event, 'fs.h')">fs.h</button>
+           <button class="tabselection1" onclick="showCode(event, 'disk.c')">disk.c</button>
+           <button class="tabselection1" onclick="showCode(event, 'disk.h')">disk.h</button>
+       </div>
+       
+       <div class="codewrapper">
+           <div id="fs.c" class="code1">
+               <pre>
+                   <code>
+                    #include &lt;assert.h&gt;
+                    #include &lt;stdio.h&gt;
+                    #include &lt;stdlib.h&gt;
+                    #include &lt;string.h&gt;
+                    #include &lt;stdint.h&gt;
+
+                    #include "disk.h"
+                    #include "fs.h"
+
+                    #define blockSize 4096
+                    #define FAT_EOC 0xFFFF
+
+                    //struct FAT fatArr;
+
+                    //struct Superblock *sblock;
+
+                    struct __attribute__((__packed__)) Superblock
+                    {
+                        char sig[8];
+                        uint16_t vdBlocks;
+                        uint16_t rbIndex;
+                        uint16_t dbIndex;
+                        uint16_t amtDB;
+                        uint8_t numFATB;
+                        char padding[4079];
+                    };
+                    struct Superblock sblock;
+
+                    struct __attribute__((__packed__)) FAT
+                    {
+                        uint16_t fatEntry;
+                    };
+
+                    struct FAT *fatArr;
+
+                    struct __attribute__((__packed__)) RootDirectory
+                    {
+                        char rfilename[16];
+                        uint32_t filesize;
+                        uint16_t indexFDB;
+                        char padding2[10];
+                    };
+
+                    struct fileDescriptor
+                    {
+                        int offset;
+                        int rootDEnum;
+
+                    };
+
+                    int numFileDescriptor;
+
+                    struct fileDescriptor fileDescriptors [32];
+
+                    struct RootDirectory root[128];
+
+                    int fs_mount(const char *diskname)
+                    {
+                        int i;
+                        char signature[8] = "ECS150FS";
+
+                        block_disk_open(diskname);
+
+                        block_read(0, (void*) &amp;sblock);	
+
+                        fatArr = malloc(sizeof(sblock.numFATB * blockSize));
+
+
+                        if (strncmp(signature, sblock.sig, 8) != 0)
+                        {
+                            printf("signatures don't match\n");
+                            exit(-1);
+                        }
+
+                        for (i = 1; i &lt;= 1 + sblock.numFATB; i++)
+                        {
+                            block_read(i, (void*) &amp;fatArr[i]); //read FAT and loop through each FAT block
+                        }
+
+                        fatArr[0].fatEntry == FAT_EOC;
+
+                        block_read(sblock.rbIndex, (void*) &amp;root); //read root directory
+
+                        return 0;
+                    }
+
+                    int fs_umount(void)
+                    {
+
+                        int j;
+                        int numFileDescriptor = 0;
+
+                        if (numFileDescriptor >= 1 || block_disk_count() == -1)
+                        {
+                            //printf("exited");
+                            exit(-1);
+                        }
+
+                        //write from structs back to disk
+                        //printf("write superblock\n");
+                        block_write(0, (void*) &amp;sblock); //write Superblock
+
+                        for (j = 1; j &lt;= 1 + sblock.numFATB; j++)
+                        {
+                            //printf("write FAT blocks...\n");
+                            block_write(j, (void*) &amp;fatArr[j]); //write each FAT block
+                        }
+                        //printf("write root directory\n");
+                        block_write(sblock.rbIndex, (void*) &amp;root); // write root directory
+
+                        //close disk
+                        block_disk_close();
+
+                        return 0;
+                    }
+
+                    int fs_info(void)
+                    {
+                        int totalFAT;
+                        int k;
+                        int freeRoot = 0;
+                        int totalRoot;
+                        int freeFatCount = 0;
+
+
+                        for (int n = 0; n &lt; sblock.amtDB; n++)
+                        {
+                            if (fatArr[n].fatEntry == 0)
+                            {
+                                freeFatCount++;
+                            }
+                        }
+
+                        totalFAT = (sblock.numFATB * blockSize) / 2;
+
+                        for (k = 0; k &lt; 128; k++)
+                        {
+                            if (root[k].rfilename[0] == 0)
+                            {
+                                freeRoot++;
+                            }
+                        }
+
+                        totalRoot = sizeof(root) / sizeof(root[0]);
+
+                        printf("FS Info:\n");
+                        printf("total_blk_count=%d\n", sblock.vdBlocks);
+                        printf("fat_blk_count=%d\n", sblock.numFATB);
+                        printf("rdir_blk=%d\n", sblock.rbIndex);
+                        printf("data_blk=%d\n", sblock.dbIndex);
+                        printf("data_blk_count=%d\n", sblock.amtDB);
+                        printf("fat_free_ratio=%d/%d\n", freeFatCount, totalFAT);
+                        printf("rdir_free_ratio=%d/%d\n", freeRoot, totalRoot);
+
+                        return 0;
+                    }
+
+                    int fs_create(const char *filename)
+                    {
+                        int a;
+
+                        if (strlen(filename) > FS_FILENAME_LEN)
+                        {
+                            printf("file name exceeds length\n");
+                            exit(-1);
+                        }
+
+                        for (a = 0; a &lt; 128; a++)
+                        {
+                            if(strcmp(root[a].rfilename, filename) == 0)
+                            {
+                                exit(-1);
+                            }
+                        }
+
+                        for (a = 0; a &lt; 128; a++)
+                        {
+                            if (root[a].rfilename[0] == 0)
+                            {
+                                strcpy(root[a].rfilename, filename);
+                                root[a].filesize = 0;
+                                root[a].indexFDB = FAT_EOC;
+                                break;
+                            }
+                        }
+
+                        return 0;
+                    }
+
+                    int fs_delete(const char *filename)
+                    {
+                        int b;
+
+                        for (b = 0; b &lt; 128; b++)
+                        {
+                            if (strcmp(root[b].rfilename, filename) != 0)
+                            {
+                                //Check to see if filename even exists
+                                exit(-1);
+                            }
+                            else if (root[b].rfilename == filename)
+                            {
+                                //free data blocks containing files contents in the FAT
+                                fatArr[root[b].indexFDB].fatEntry = 0;
+
+                                //empty file entries
+                                root[b].rfilename[0] = 0;
+                                root[b].filesize = 0;
+                                root[b].indexFDB = 0;
+
+                                break;
+                            }
+                        }
+
+                        return 0;
+                    }
+
+                    int fs_ls(void)
+                    {
+
+                        int p;
+
+                        printf("FS Ls:\n");
+
+                        //printf("There is another print statement here\n");
+
+                        for (p = 0; p &lt; 128; p++)
+                        {
+                            if (root[p].rfilename[0] != 0)
+                            {
+                                printf("file: %s, size: %d, data_blk: %d\n", root[p].rfilename, root[p].filesize, root[p].indexFDB);
+                            }
+                        }
+
+
+                        return 0;
+                    }
+
+                    int fs_open(const char *filename)
+                    {
+
+                        int i;
+                        int j;
+                        if(numFileDescriptors >= FS_OPEN_MAX_COUNT)
+                        {
+                            return -1;
+                        }
+
+                        if(strlen(filename) > FS_FILENAME_LEN)
+                        {
+                            return -1;
+                        }
+
+                        for(j = 0; j &lt; 32; j++)
+                        {
+                            if(fileDescriptors[j].rootDEnum == -1)
+                            {
+                                break;
+                            }
+                        }
+
+                        for(i = 0; i &lt; 128; i++)
+                        {
+                            if(strcmp(root[i].rfilename, filename) == 0)
+                            {
+                                fileDescriptors[j].rootDEnum = i;
+                                numFileDescriptors++;
+                                return j;
+                            }
+                        }
+
+                        return 0;
+                    }
+
+                    int fs_close(int fd)
+                    {
+                        if(fd > 31 || fd &lt; 0)
+                        {
+                            return -1;
+                        }
+
+                        numFileDescriptors--;
+
+                        fileDescriptors[fd].offset = 0;
+                        fileDescriptors[fd].rootDEnum = -1;
+
+                        return 0;
+                    }
+
+                    int fs_stat(int fd)
+                    {
+                        if(fd > 31 || fd &lt; 0)
+                        {
+                            return -1;
+                        }
+                        return root[fileDescriptors[fd].rootDEnum].filesize;
+                    }
+
+
+                    int fs_lseek(int fd, size_t offset)
+                    {
+                        return 0;
+                    }
+
+                    int fs_write(int fd, void *buf, size_t count)
+                    {
+                        return 0;
+                    }
+
+                    int fs_read(int fd, void *buf, size_t count)
+                    {
+                        return 0;
+                    }
+                    </code>
+               </pre>
+           </div>
+           
+           <div id="fs.h" class="code1">
+               <pre>
+                    <code>
+                        #ifndef _FS_H
+                        #define _FS_H
+
+                        #include &lt;stdint.h&gt;
+
+                        /** Maximum filename length (including the NULL character) */
+                        #define FS_FILENAME_LEN 16
+
+                        /** Maximum number of files in the root directory */
+                        #define FS_FILE_MAX_COUNT 128
+
+                        /** Maximum number of open files */
+                        #define FS_OPEN_MAX_COUNT 32
+
+                        /**
+                         * fs_mount - Mount a file system
+                         * @diskname: Name of the virtual disk file
+                         *
+                         * Open the virtual disk file @diskname and mount the file system that it
+                         * contains. A file system needs to be mounted before files can be read from it
+                         * with fs_read() or written to it with fs_write().
+                         *
+                         * Return: -1 if virtual disk file @diskname cannot be opened, or if no valid
+                         * file system can be located. 0 otherwise.
+                         */
+                        int fs_mount(const char *diskname);
+
+                        /**
+                         * fs_umount - Unmount file system
+                         *
+                         * Unmount the currently mounted file system and close the underlying virtual
+                         * disk file.
+                         *
+                         * Return: -1 if no underlying virtual disk was opened, or if the virtual disk
+                         * cannot be closed, or if there are still open file descriptors. 0 otherwise.
+                         */
+                        int fs_umount(void);
+
+                        /**
+                         * fs_info - Display information about file system
+                         *
+                         * Display some information about the currently mounted file system.
+                         *
+                         * Return: -1 if no underlying virtual disk was opened. 0 otherwise.
+                         */
+                        int fs_info(void);
+
+                        /**
+                         * fs_create - Create a new file
+                         * @filename: File name
+                         *
+                         * Create a new and empty file named @filename in the root directory of the
+                         * mounted file system. String @filename must be NULL-terminated and its total
+                         * length cannot exceed %FS_FILENAME_LEN characters (including the NULL
+                         * character).
+                         *
+                         * Return: -1 if @filename is invalid, if a file named @filename already exists,
+                         * or if string @filename is too long, or if the root directory already contains
+                         * %FS_FILE_MAX_COUNT files. 0 otherwise.
+                         */
+                        int fs_create(const char *filename);
+
+                        /**
+                         * fs_delete - Delete a file
+                         * @filename: File name
+                         *
+                         * Delete the file named @filename from the root directory of the mounted file
+                         * system.
+                         *
+                         * Return: -1 if @filename is invalid, if there is no file named @filename to
+                         * delete, or if file @filename is currently open. 0 otherwise.
+                         */
+                        int fs_delete(const char *filename);
+
+                        /**
+                         * fs_ls - List files on file system
+                         *
+                         * List information about the files located in the root directory.
+                         *
+                         * Return: -1 if no underlying virtual disk was opened. 0 otherwise.
+                         */
+                        int fs_ls(void);
+
+                        /**
+                         * fs_open - Open a file
+                         * @filename: File name
+                         *
+                         * Open file named @filename for reading and writing, and return the
+                         * corresponding file descriptor. The file descriptor is a non-negative integer
+                         * that is used subsequently to access the contents of the file. The file offset
+                         * of the file descriptor is set to 0 initially (beginning of the file). If the
+                         * same file is opened multiple files, fs_open() must return distinct file
+                         * descriptors. A maximum of %FS_OPEN_MAX_COUNT files can be open
+                         * simultaneously.
+                         *
+                         * Return: -1 if @filename is invalid, there is no file named @filename to open,
+                         * or if there are already %FS_OPEN_MAX_COUNT files currently open. Otherwise,
+                         * return the file descriptor.
+                         */
+                        int fs_open(const char *filename);
+
+                        /**
+                         * fs_close - Close a file
+                         * @fd: File descriptor
+                         *
+                         * Close file descriptor @fd.
+                         *
+                         * Return: -1 if file descriptor @fd is invalid (out of bounds or not currently
+                         * open). 0 otherwise.
+                         */
+                        int fs_close(int fd);
+
+                        /**
+                         * fs_stat - Get file status
+                         * @fd: File descriptor
+                         *
+                         * Get the current size of the file pointed by file descriptor @fd.
+                         *
+                         * Return: -1 if file descriptor @fd is invalid (out of bounds or not currently
+                         * open). Otherwise return the current size of file.
+                         */
+                        int fs_stat(int fd);
+
+                        /**
+                         * fs_lseek - Set file offset
+                         * @fd: File descriptor
+                         * @offset: File offset
+                         *
+                         * Set the file offset (used for read and write operations) associated with file
+                         * descriptor @fd to the argument @offset. To append to a file, one can call
+                         * fs_lseek(fd, fs_stat(fd));
+                         *
+                         * Return: -1 if file descriptor @fd is invalid (out of bounds or not currently
+                         * open), or if @offset is out of bounds (beyond the end of the file). 0
+                         * otherwise.
+                         */
+                        int fs_lseek(int fd, size_t offset);
+
+                        /**
+                         * fs_write - Write to a file
+                         * @fd: File descriptor
+                         * @buf: Data buffer to write in the file
+                         * @count: Number of bytes of data to be written
+                         *
+                         * Attempt to write @count bytes of data from buffer pointer by @buf into the
+                         * file referenced by file descriptor @fd. It is assumed that @buf holds at
+                         * least @count bytes.
+                         *
+                         * When the function attempts to write past the end of the file, the file is
+                         * automatically extended to hold the additional bytes. If the underlying disk
+                         * runs out of space while performing a write operation, fs_write() should write
+                         * as many bytes as possible. The number of written bytes can therefore be
+                         * smaller than @count (it can even be 0 if there is no more space on disk).
+                         *
+                         * Return: -1 if file descriptor @fd is invalid (out of bounds or not currently
+                         * open). Otherwise return the number of bytes actually written.
+                         */
+                        int fs_write(int fd, void *buf, size_t count);
+
+                        /**
+                         * fs_read - Read from a file
+                         * @fd: File descriptor
+                         * @buf: Data buffer to be filled with data
+                         * @count: Number of bytes of data to be read
+                         *
+                         * Attempt to read @count bytes of data from the file referenced by file
+                         * descriptor @fd into buffer pointer by @buf. It is assumed that @buf is large
+                         * enough to hold at least @count bytes.
+                         *
+                         * The number of bytes read can be smaller than @count if there are less than
+                         * @count bytes until the end of the file (it can even be 0 if the file offset
+                         * is at the end of the file). The file offset of the file descriptor is
+                         * implicitly incremented by the number of bytes that were actually read.
+                         *
+                         * Return: -1 if file descriptor @fd is invalid (out of bounds or not currently
+                         * open). Otherwise return the number of bytes actually read.
+                         */
+                        int fs_read(int fd, void *buf, size_t count);
+
+                        #endif /* _FS_H */
+                    </code>
+               </pre>
+           </div>
+           
+           <div id="disk.c" class="code1">
+               <pre>
+                    <code>
+                        #include &lt;fcntl.h&gt;
+                        #include &lt;stdio.h&gt;
+                        #include &lt;stdlib.h&gt;
+                        #include &lt;sys/stat.h&gt;
+                        #include &lt;sys/types.h&gt;
+                        #include &lt;unistd.h&gt;
+
+                        #include "disk.h"
+
+                        #define block_error(fmt, ...) \
+                            fprintf(stderr, "%s: "fmt"\n", __func__, ##__VA_ARGS__)
+
+                        /* Invalid file descriptor */
+                        #define INVALID_FD -1
+
+                        /* Disk instance description */
+                        struct disk {
+                            /* File descriptor */
+                            int fd;
+                            /* Block count */
+                            size_t bcount;
+                        };
+
+                        /* Currently open virtual disk (invalid by default) */
+                        static struct disk disk = { .fd = INVALID_FD };
+
+                        int block_disk_open(const char *diskname)
+                        {
+                            int fd;
+                            struct stat st;
+
+                            if (!diskname) {
+                                block_error("invalid file diskname");
+                                return -1;
+                            }
+
+                            if (disk.fd != INVALID_FD) {
+                                block_error("disk already open");
+                                return -1;
+                            }
+
+                            if ((fd = open(diskname, O_RDWR, 0644)) &lt; 0) {
+                                perror("open");
+                                return -1;
+                            }
+
+                            if (fstat(fd, &amp;st)) {
+                                perror("fstat");
+                                return -1;
+                            }
+
+                            /* The disk image's size should be a multiple of the block size */
+                            if (st.st_size % BLOCK_SIZE != 0) {
+                                block_error("size '%zu' is not multiple of '%d'",
+                                        st.st_size, BLOCK_SIZE);
+                                return -1;
+                            }
+
+                            disk.fd = fd;
+                            disk.bcount = st.st_size / BLOCK_SIZE;
+
+                            return 0;
+                        }
+
+                        int block_disk_close(void)
+                        {
+                            if (disk.fd == INVALID_FD) {
+                                block_error("no disk currently open");
+                                return -1;
+                            }
+
+                            close(disk.fd);
+
+                            disk.fd = INVALID_FD;
+
+                            return 0;
+                        }
+
+                        int block_disk_count(void)
+                        {
+                            if (disk.fd == INVALID_FD) {
+                                block_error("no disk currently open");
+                                return -1;
+                            }
+
+                            return disk.bcount;
+                        }
+
+                        int block_write(size_t block, const void *buf)
+                        {
+                            if (disk.fd == INVALID_FD) {
+                                block_error("no disk currently open");
+                                return -1;
+                            }
+
+                            if (block >= disk.bcount) {
+                                block_error("block index out of bounds (%zu/%zu)",
+                                        block, disk.bcount);
+                                return -1;
+                            }
+
+                            /* Move to the specified block number */
+                            if (lseek(disk.fd, block * BLOCK_SIZE, SEEK_SET) &lt; 0) {
+                                perror("lseek");
+                                return -1;
+                            }
+
+                            /* Perform the actual write into the disk image */
+                            if (write(disk.fd, buf, BLOCK_SIZE) &lt; 0) {
+                                perror("write");
+                                return -1;
+                            }
+
+                            return 0;
+                        }
+
+                        int block_read(size_t block, void *buf)
+                        {
+                            if (disk.fd == INVALID_FD) {
+                                block_error("no disk currently open");
+                                return -1;
+                            }
+
+                            if (block >= disk.bcount) {
+                                block_error("block index out of bounds (%zu/%zu)",
+                                        block, disk.bcount);
+                                return -1;
+                            }
+
+                            /* Move to the specified block number */
+                            if (lseek(disk.fd, block * BLOCK_SIZE, SEEK_SET) &lt; 0) {
+                                perror("lseek");
+                                return -1;
+                            }
+
+                            /* Perform the actual read from the disk image */
+                            if (read(disk.fd, buf, BLOCK_SIZE) &lt; 0) {
+                                perror("read");
+                                return -1;
+                            }
+
+                            return 0;
+                        }
+                    </code>
+               </pre>
+           </div>
+           
+           <div id="disk.h" class="code1">
+               <pre>
+                    <code>
+                        #ifndef _DISK_H
+                        #define _DISK_H
+
+                        #include &lt;stddef.h&gt;
+
+                        /** Size of a disk block in bytes */
+                        #define BLOCK_SIZE 4096
+
+                        /**
+                         * block_disk_open - Open virtual disk file
+                         * @diskname: Name of the virtual disk file
+                         *
+                         * Open virtual disk file @diskname. A virtual disk file must be opened before
+                         * blocks can be read from it with block_read() or written to it with
+                         * block_write().
+                         *
+                         * Return: -1 if @diskname is invalid, if the virtual disk file cannot be opened
+                         * or is already open. 0 otherwise.
+                         */
+                        int block_disk_open(const char *diskname);
+
+                        /**
+                         * block_disk_close - Close virtual disk file
+                         *
+                         * Return: -1 if there was no virtual disk file opened. 0 otherwise.
+                         */
+                        int block_disk_close(void);
+
+                        /**
+                         * block_disk_count - Get disk's block count
+                         *
+                         * Return: -1 if there was no virtual disk file opened, otherwise the number of
+                         * blocks that the currently open disk contains.
+                         */
+                        int block_disk_count(void);
+
+                        /**
+                         * block_write - Write a block to disk
+                         * @block: Index of the block to write to
+                         * @buf: Data buffer to write in the block
+                         *
+                         * Write the content of buffer @buf (%BLOCK_SIZE bytes) in the virtual disk's
+                         * block @block.
+                         *
+                         * Return: -1 if @block is out of bounds or inaccessible or if the writing
+                         * operation fails. 0 otherwise.
+                         */
+                        int block_write(size_t block, const void *buf);
+
+                        /**
+                         * block_read - Read a block from disk
+                         * @block: Index of the block to read from
+                         * @buf: Data buffer to be filled with content of block
+                         *
+                         * Read the content of virtual disk's block @block (%BLOCK_SIZE bytes) into
+                         * buffer @buf.
+                         *
+                         * Return: -1 if @block is out of bounds or inaccessible, or if the reading
+                         * operation fails. 0 otherwise.
+                         */
+                        int block_read(size_t block, void *buf);
+
+                        #endif /* _DISK_H */
+                    </code>
+               </pre>       
+           </div>
+       </div>
+       
+       <p class="project_desc" id="first_paragraph">
+           I globally initialized structs for <i>Superblock</i>, <i>RootDirectory</i>, and <i>FileDescriptor</i> and used an array to contain <i>FAT</i> entries. Then, I memory allocated memory  for the <i>FAT</i> array.
+       </p>
+       
+       <p class="project_desc">
+            For the first part, I just opened the disk, read the first block to the <i>Superblock</i> struct. Then, I did the memory allocation for the <i>FAT</i> array and checked for some errors like checking for matching signatures. Next, I read the FAT blocks by iterating through the calculated number of blocks for the disk created. Then I did some calculations for the <i>fat_free_ratio</i> by getting the number of <i>taken_FAT_bytes</i> and also calculated the root directory free ratio by checking the amount of taken root directories inside the <i>fs_mount</i> function. For <i>fs_umount</i>, I just write back to the disk in the same order I read the disk and then close the disk. Lastly, for <i>fs_info</i> I only had print statements for all of the desired values.
+       </p>
+       
+       <span id="more" style="display: none">
+       
+           <p class="project_desc">
+                I started <i>fs_create</i> with checking to see if the filename already exists in the root directory. Then, I simply check for a free entry using a for loop and add the <i>filename</i>, <i>filesize</i>, and <i>index</i> to the free entry. For <i>fs_delete</i>, I checked for an already existing filename. Once it is found, "delete" the file by setting all the respective fields in the file to 0. For <i>fs_ls</i> I used a for loop to get the root directory files and print out the <i>filename</i>, <i>filesize</i>, and <i>index</i> in the right format.
+           </p>
+
+           <p class="project_desc">
+                For <i>fs_open</i>, I first check if the file exits by using a for loop. If the file exists, then if space permits, I create a file descriptor entry setting the filename, index, and file offset. After that, I return the file descriptor value which is the index of our file descriptor struct array. For <i>fs_close</i>, I check for whether the file descriptor is out of bounds or not first. Then, I close the file descriptor by setting the filename to <i>\0</i> and the initial state of <i>-1</i> for the root entry value and the file offset value. For <i>fs_stat</i>, I check for the file descriptor being out of bounds again and then move on to returning the total size of the file. Lastly for <i>fs_lseek</i> I do some checks for boundaries again, and then set the <i>file_offset</i> of the file descriptors to the passed in <i>offset</i>.
+           </p>
+
+           <p class="project_desc">
+                I started by adding some essential variables to keep track of the position of the blocks being read and written. For <i>fs_write</i>, I created a block array for the purpose of calculating how many blocks I would need to write to by using a for loop and using <i>count/BLOCK_SIZE + 2*</i> where the default case would require one block to write to and another block that marks the end. I then use a variable to keep track of the current location in the <i>buf</i>. The primary for loop goes through the number of blocks to write to. Inside, I have two cases: 1)if the write operation is to more than one block 2)if the write operation is only one block. If the write is only to one block, then it simply sets a second buffer of the remaining size of buf and goes through to set <i>buffer2</i> and write it. Otherwise I set the first buffer and write it. I then update metadata for the <i>FAT</i>. For  
+                <i>fs_read</i>, I had some read issues where reading 3 or more blocks will only read the first block. But for 2 or less blocks it would read everything properly. I read through using a for loop to go through the <i>FAT</i> array until it reaches the end. In this for loop I have two for loops for two scenarios: 1)if I read the entire block 2)if a partial block needs to be read.
+           </p>
+       
+       </span>
+       
+       <button onclick="showMore()" id="more_button">Read More</button>
+           
+       <a name="User-Level Thread Library"></a>
+       
+       <h2 class="project">User-Level Thread Library</h2>
+       
+       <div class="tab">
+           <button class="tabselection2" onclick="showCode2(event, 'sem.c')" id="defaultTab2">sem.c</button>
+           <button class="tabselection2" onclick="showCode2(event, 'sem.h')">sem.h</button>
+           <button class="tabselection2" onclick="showCode2(event, 'queue.h')">queue.h</button>
+           <button class="tabselection2" onclick="showCode2(event, 'thread.h')">thread.h</button>
+           <button class="tabselection2" onclick="showCode2(event, 'tps.c')">tps.c</button>
+           <button class="tabselection2" onclick="showCode2(event, 'tps.h')">tps.h</button>
+       </div>
+       
+       <div class="codewrapper">
+           <div id="sem.c" class="code2">
+               <pre>
+                    <code>
+                        #include &lt;assert.h&gt;
+                        #include &lt;stddef.h&gt;
+                        #include &lt;stdlib.h&gt;
+                        #include "queue.h"
+                        #include "sem.h"
+                        #include "thread.h"
+
+                        typedef struct semaphore {
+                          queue_t threads;
+                          size_t count;
+                        } semaphore;
+
+                        sem_t sem_create(size_t count)
+                        {
+                          enter_critical_section();
+                          // Allocate and check for failure
+                          sem_t new_sem;
+                          if ((new_sem = malloc (sizeof (semaphore))) == NULL)
+                            return NULL;
+
+                          new_sem-&gt;threads = queue_create();
+                          exit_critical_section();
+                          new_sem-&gt;count = count;
+
+                          return new_sem;
+                        }
+
+                        int sem_destroy(sem_t sem)
+                        {
+                          enter_critical_section();
+                          if (sem == NULL || queue_length(sem-&gt;threads) &gt; 0)
+                            return -1;
+
+                          free(sem);
+                          exit_critical_section();
+                          return 0;
+                        }
+
+                        int sem_down(sem_t sem)
+                        {
+                          enter_critical_section();
+                          if (sem == NULL)
+                            return -1;
+
+                          if (sem-&gt;count &gt; 0)
+                            (sem-&gt;count)--;
+                          else {
+                            pthread_t tid = pthread_self();
+                            queue_enqueue(sem-&gt;threads, &amp;tid);
+                            thread_block();
+                          }
+
+                          exit_critical_section();
+                          return 0;
+                        }
+
+                        int sem_up(sem_t sem)
+                        {
+                          enter_critical_section();
+                          if (sem == NULL)
+                            return -1;
+
+                          pthread_t *tid;
+                          if (queue_length(sem-&gt;threads) &gt; 0) {
+                            queue_dequeue(sem-&gt;threads, (void*)&amp;tid);
+                            thread_unblock(*tid);
+                          }
+                          else
+                            (sem-&gt;count)++;
+
+                          exit_critical_section();
+                          return 0;
+                        }
+                    </code>
+               </pre>
+           </div>
+           
+           <div id="sem.h" class="code2">
+               <pre>
+                    <code>
+                        #ifndef _SEMAPHORE_H
+                        #define _SEMAPHORE_H
+
+                        #include &lt;stdint.h&gt;
+                        #include &lt;sys/types.h&gt;
+
+                        /*
+                         * sem_t - Semaphore type
+                         *
+                         * A semaphore is a way to control access to a common resource by multiple
+                         * threads. Such resource has an internal count, meaning that it can only be
+                         * shared a certain number of times. When a thread successfully takes the
+                         * resource, the count is decreased. When the resource is not available,
+                         * following threads are blocked until the resource becomes available again.
+                         */
+                        typedef struct semaphore *sem_t;
+
+                        /*
+                         * sem_create - Create semaphore
+                         * @count: Semaphore count
+                         *
+                         * Allocate and initialize a semaphore of internal count @count.
+                         *
+                         * Return: Pointer to initialized semaphore. NULL in case of failure when
+                         * allocating the new semaphore.
+                         */
+                        sem_t sem_create(size_t count);
+
+                        /*
+                         * sem_destroy - Deallocate a semaphore
+                         * @sem: Semaphore to deallocate
+                         *
+                         * Deallocate semaphore @sem.
+                         *
+                         * Return: -1 if @sem is NULL or if other threads are still being blocked on
+                         * @sem. 0 is @sem was successfully destroyed.
+                         */
+                        int sem_destroy(sem_t sem);
+
+                        /*
+                         * sem_down - Take a semaphore
+                         * @sem: Semaphore to take
+                         *
+                         * Take a resource from semaphore @sem.
+                         *
+                         * Taking an unavailable semaphore will cause the caller thread to be blocked
+                         * until the semaphore becomes available.
+                         *
+                         * Return: -1 if @sem is NULL. 0 if semaphore was successfully taken.
+                         */
+                        int sem_down(sem_t sem);
+
+                        /*
+                         * sem_up - Release a semaphore
+                         * @sem: Semaphore to release
+                         *
+                         * Release a resource to semaphore @sem.
+                         *
+                         * If the waiting list associated to @sem is not empty, releasing a resource
+                         * also causes the first thread (i.e. the oldest) in the waiting list to be
+                         * unblocked.
+                         *
+                         * Return: -1 if @sem is NULL. 0 if semaphore was successfully released.
+                         */
+                        int sem_up(sem_t sem);
+
+                        int sem_getvalue(sem_t sem, int *sval);
+
+                        #endif /* _SEMAPHORE_H */
+                    </code>
+               </pre>
+           </div>
+           
+           <div id="queue.h" class="code2">
+               <pre>
+                    <code>
+                        #ifndef _QUEUE_H
+                        #define _QUEUE_H
+
+                        /*
+                         * queue_t - Queue type
+                         *
+                         * A queue is a FIFO data structure. Data items are enqueued one after the
+                         * other.  When dequeueing, the queue must returned the oldest enqueued item
+                         * first and so on.
+                         *
+                         * Apart from delete and iterate operations, all operations should be O(1).
+                         */
+                        typedef struct queue* queue_t;
+
+                        /*
+                         * queue_create - Allocate an empty queue
+                         *
+                         * Create a new object of type 'struct queue' and return its address.
+                         *
+                         * Return: Pointer to new empty queue. NULL in case of failure when allocating
+                         * the new queue.
+                         */
+                        queue_t queue_create(void);
+
+                        /*
+                         * queue_destroy - Deallocate a queue
+                         * @queue: Queue to deallocate
+                         *
+                         * Deallocate the memory associated to the queue object pointed by @queue.
+                         *
+                         * Return: -1 if @queue is NULL of if @queue is not empty. 0 if @queue was
+                         * successfully destroyed.
+                         */
+                        int queue_destroy(queue_t queue);
+
+                        /*
+                         * queue_enqueue - Enqueue data item
+                         * @queue: Queue in which to enqueue item
+                         * @data: Address of data item to enqueue
+                         *
+                         * Enqueue the address contained in @data in the queue @queue.
+                         *
+                         * Return: -1 if @queue or @data are NULL, or in case of memory allocation error
+                         * when enqueing. 0 if @data was successfully enqueued in @queue.
+                         */
+                        int queue_enqueue(queue_t queue, void *data);
+
+                        /*
+                         * queue_dequeue - Dequeue data item
+                         * @queue: Queue in which to dequeue item
+                         * @data: Address of data pointer where item is received
+                         *
+                         * Remove the oldest item of queue @queue and assign this item (the value of a
+                         * pointer) to @data.
+                         *
+                         * Return: -1 if @queue or @data are NULL, or if the queue is empty. 0 if @data
+                         * was set with the oldest item available in @queue.
+                         */
+                        int queue_dequeue(queue_t queue, void **data);
+
+                        /*
+                         * queue_delete - Delete data item
+                         * @queue: Queue in which to delete item
+                         * @data: Data to delete
+                         *
+                         * Find in queue @queue, the first (ie oldest) item equal to @data and delete
+                         * this item.
+                         *
+                         * Return: -1 if @queue or @data are NULL, of if @data was not found in the
+                         * queue. 0 if @data was found and deleted from @queue.
+                         */
+                        int queue_delete(queue_t queue, void *data);
+
+                        /*
+                         * queue_func_t - Queue callback function type
+                         * @queue: Current queue
+                         * @data: Data item
+                         * @arg: Extra argument
+                         *
+                         * Return: 0 to continue iterating, any other value to stop iterating at this
+                         * particular item.
+                         */
+                        typedef int (*queue_func_t)(queue_t queue, void *data, void *arg);
+
+                        /*
+                         * queue_iterate - Iterate on all items of a queue
+                         * @queue: Queue to iterate on
+                         * @func: Function to call on each queue item
+                         * @arg: Extra argument to be given to the callback function
+                         * @data: Address of data pointer where possible item is received
+                         *
+                         * This function iterates on every item of the queue @queue and calls the given
+                         * callback function @func. When calling @func, pass the queue being iterated
+                         * over, the current data item and the extra argument @arg.
+                         *
+                         * If @func returns 1 for a specific item, the iteration stops. If @data is
+                         * different than NULL, then it receives the data item where the iteration has
+                         * stopped.
+                         *
+                         * We assume that queue_delete() cannot be called inside @func on the current
+                         * item. Doing so would result in an undefined behavior.
+                         *
+                         * Return: -1 if @queue or @func are NULL. 0 if @queue was iterated
+                         * successfully.
+                         */
+                        int queue_iterate(queue_t queue, queue_func_t func, void *arg, void **data);
+
+                        /*
+                         * queue_length - Queue length
+                         * @queue: Queue to get the length of
+                         *
+                         * Return the length of queue @queue.
+                         *
+                         * Return: -1 if @queue is NULL. Length of @queue otherwise.
+                         */
+                        int queue_length(queue_t queue);
+
+                        #endif /* _QUEUE_H */
+                    </code>
+               </pre>
+           </div>
+           
+           <div id="thread.h" class="code2">
+               <pre>
+                    <code>
+                        #ifndef _THREAD_H
+                        #define _THREAD_H
+
+                        #include &lt;pthread.h&gt;
+
+                        /*
+                         * thread_block - Block thread
+                         *
+                         * By calling this function the current thread becomes blocked. It can only be
+                         * unblocked by another thread calling `thread_unblock()`.
+                         *
+                         * If this function is called in a critical section (i.e. within a block of code
+                         * located after a call to 'enter_critical_section()'), it will exit the
+                         * critical section before going to sleep and re-enter the critical section upon
+                         * wake-up.
+                         *
+                         * Return: -1 in case of failure, 0 otherwise
+                         */
+                        int thread_block(void);
+
+                        /*
+                         * thread_unblock - Unblock thread
+                         * @tid: Thread ID
+                         *
+                         * Unblock thread @tid and make it ready for scheduling.
+                         *
+                         * Return: -1 if @tid does not correspond to a currently blocked thread. 0 if
+                         * thread @tid was successfully unblocked.
+                         */
+                        int thread_unblock(pthread_t tid);
+
+                        /*
+                         * enter_critical_section - Enter critical section
+                         *
+                         * Call this function when entering a critical section in order to ensure mutual
+                         * exclusion with other threads.
+                         */
+                        void enter_critical_section(void);
+
+                        /*
+                         * exit_critical_section - Exit critical section
+                         *
+                         * Call this function when leaving a critical section in order to allow another
+                         * thread who was waiting to enter the same critical section to enter.
+                         */
+                        void exit_critical_section(void);
+
+                        #endif /* _THREAD_H */
+                    </code>
+               </pre>
+           </div>
+           
+           <div id="tps.c" class="code2">
+               <pre>
+                    <code>
+                        #include &lt;assert.h&gt;
+                        #include &lt;pthread.h&gt;
+                        #include &lt;signal.h&gt;
+                        #include &lt;stdint.h&gt;
+                        #include &lt;stdio.h&gt;
+                        #include &lt;stdlib.h&gt;
+                        #include &lt;string.h&gt;
+                        #include &lt;sys/mman.h&gt;
+                        #include &lt;unistd.h&gt;
+
+                        #include "queue.h"
+                        #include "thread.h"
+                        #include "tps.h"
+
+
+                        typedef struct {
+                          pthread_t tid;
+                          struct page *tps;
+                        } tps_data;
+
+                        struct page {
+                          void *page;
+                          int shared_count;
+                        };
+
+                        static queue_t tps_queue;
+                        void *page_array[500];
+                        int page_count;
+
+                        int find_by_tid(queue_t q, void *data, void *arg)
+                        {
+                          pthread_t* a = (pthread_t*) data;
+                          tps_data *match = (tps_data*) arg;
+                          if (*a == match->tid)
+                            return 1;
+
+                          return 0;
+                        }
+
+                        static void segv_handler(int sig, siginfo_t *si, void *context)
+                        {
+                          int prot_test = 0;
+                          /*
+                           * Get the address corresponding to the beginning of the page where the
+                           * fault occurred
+                           */
+                          void *p_fault = (void*)((uintptr_t)si->si_addr & ~(TPS_SIZE - 1));
+
+                          /*
+                           * Iterate through all the TPS areas and find if p_fault matches one of them
+                           */
+                          for (int i = 0; i &lt; page_count; i++) {
+                            if (page_array[i] == p_fault)
+                              prot_test = 1;
+                          }
+
+                          if (prot_test)
+                            /* Printf the following error message */
+                            fprintf(stderr, "TPS protection error!\n");
+
+                            /* In any case, restore the default signal handlers */
+                            signal(SIGSEGV, SIG_DFL);
+                            signal(SIGBUS, SIG_DFL);
+                            /* And transmit the signal again in order to cause the program to crash */
+                            raise(sig);
+                        }
+
+                        int tps_init(int segv)
+                        {
+                          tps_queue = queue_create();
+                          page_count = 0;
+
+                          if (segv) {
+                            struct sigaction sa;
+
+                            sigemptyset(&amp;sa.sa_mask);
+                            sa.sa_flags = SA_SIGINFO;
+                            sa.sa_sigaction = segv_handler;
+                            sigaction(SIGBUS, &amp;sa, NULL);
+                            sigaction(SIGSEGV, &amp;sa, NULL);
+                          }
+
+                          return 0;
+                        }
+
+                        int tps_create(void)
+                        {
+                          tps_data *test = NULL;
+                          pthread_t tid = pthread_self();
+
+                          // test to see if thread already has a tps
+                          queue_iterate(tps_queue, find_by_tid, (void*)&amp;tid, (void*)&amp;test);
+
+                          if (test)
+                            return -1;
+
+                          tps_data *data = malloc ( sizeof (tps_data) );
+                          struct page *tps = malloc ( sizeof (struct page) );
+
+                          // check malloc
+                          if (data == NULL)
+                            return -1;
+
+                          data->tid = pthread_self();
+                          data->tps = tps;
+                          data->tps->page = mmap(NULL, TPS_SIZE, PROT_NONE,
+                                        (MAP_PRIVATE | MAP_ANONYMOUS), -1, 0);
+                          queue_enqueue(tps_queue, data);
+                          page_array[page_count++] = data->tps->page;
+                          data->tps->shared_count = 1;
+
+                          return 0;
+                        }
+
+                        int tps_destroy(void)
+                        {
+                          tps_data *data = NULL;
+                          pthread_t tid = pthread_self();
+
+                          // test to see if thread has a tps
+                          queue_iterate(tps_queue, find_by_tid, (void*)&amp;tid, (void*)&amp;data);
+
+                          if (data == NULL)
+                            return -1;
+
+                          for (int i = 0; i &lt; page_count; i++) {
+                            if (page_array[i] == data->tps->page) {
+                              page_array[i] = page_array[page_count-1];
+                              page_count--;
+                            }
+                          }
+
+                          if (munmap(data->tps->page, TPS_SIZE))
+                            return -1;
+
+                          return queue_delete(tps_queue, &amp;data);
+                        }
+
+                        int tps_read(size_t offset, size_t length, char *buffer)
+                        {
+                          //char *page;
+                          tps_data *data = NULL;
+                          pthread_t tid = pthread_self();
+
+                          // test to see if thread already has a tps
+                          queue_iterate(tps_queue, find_by_tid, (void*)&amp;tid, (void*)&amp;data);
+
+                          if (data == NULL || (offset + length) > TPS_SIZE
+                              || offset &lt; 0 || buffer == NULL)
+                            return -1;
+
+                          mprotect(data->tps->page, TPS_SIZE, PROT_READ);
+
+                          for (int i = offset, j = 0; i &lt; offset + length; i++, j++)
+                            buffer[j] = ((char*)data->tps->page)[i];
+
+                          mprotect(data->tps->page, TPS_SIZE, PROT_NONE);
+                          return 0;
+                        }
+
+                        int tps_write(size_t offset, size_t length, char *buffer)
+                        {
+                          tps_data *data = NULL;
+                          pthread_t tid = pthread_self();
+
+                          // test to see if thread already has a tps
+                          queue_iterate(tps_queue, find_by_tid, (void*)&amp;tid, (void*)&amp;data);
+
+                          if (data == NULL || (offset + length) > TPS_SIZE
+                              || offset &lt; 0 || buffer == NULL) {
+                            return -1;
+                          }
+
+                          mprotect(data->tps->page, TPS_SIZE, PROT_WRITE);
+                          // check if need to copy on write
+                          if (data->tps->shared_count > 1) {
+
+                            // perform copy on write
+                            struct page *tps = malloc ( sizeof (struct page) );
+                            tps->page = mmap(NULL, TPS_SIZE, PROT_WRITE, (MAP_PRIVATE | MAP_ANONYMOUS), -1, 0);
+
+                            for (int i = 0; i &lt; TPS_SIZE; i++)
+                              ((char*)tps->page)[i] = ((char*)data->tps->page)[i];
+                            data->tps = tps;
+                            data->tps->shared_count--;
+                          }
+
+                          // write the data
+                          for (int i = offset, j = 0; i &lt; offset + length; i++, j++)
+                            ((char*)data->tps->page)[i] = buffer[j];
+
+                          mprotect(data->tps->page, TPS_SIZE, PROT_NONE);
+                          return 0;
+                        }
+
+                        int tps_clone(pthread_t tid)
+                        {
+                          tps_data *data_called = NULL;
+                          tps_data *data_calling = NULL;
+                          pthread_t tid_calling = pthread_self();
+
+                          // create new page for calling thread
+                          if (tps_create() == -1)
+                            return -1;
+
+                          // test to see if called thread has a tps
+                          queue_iterate(tps_queue, find_by_tid, (void*)&amp;tid, (void*)&amp;data_called);
+                          // get calling thread tps
+                          queue_iterate(tps_queue, find_by_tid, (void*)&amp;tid_calling, (void*)&amp;data_calling);
+
+                          // check to see if passed thread exists
+                          if (data_called == NULL)
+                            return -1;
+
+                          mprotect(data_called->tps->page, TPS_SIZE, PROT_READ);
+                          mprotect(data_calling->tps->page, TPS_SIZE, PROT_WRITE);
+
+                          data_calling->tps = data_called->tps;
+                          queue_enqueue(tps_queue, data_calling);
+                          data_called->tps->shared_count++;
+
+                          mprotect(data_called->tps->page, TPS_SIZE, PROT_NONE);
+
+                          return 0;
+                        }
+                    </code>
+               </pre>
+           </div>
+           
+           <div id="tps.h" class="code2">
+               <pre>
+                    <code>
+                        #ifndef _TPS_H
+                        #define _TPS_H
+
+                        #include &lt;pthread.h&gt;
+                        #include &lt;stdint.h&gt;
+
+                        /*
+                         * Size of a TPS area in bytes
+                         */
+                        #define TPS_SIZE 4096
+
+                        /*
+                         * tps_init - Initialize TPS
+                         * @segv - Activate segfault handler
+                         *
+                         * Initialize TPS API. This function should only be called once by the client
+                         * application. If @segv is different than 0, the TPS API should install a
+                         * page fault handler that is able to recognize TPS protection errors and
+                         * display the message "TPS protection error!\n" on stderr.
+                         *
+                         * Return: -1 if TPS API has already been initialized, or in case of failure
+                         * during the initialization. 0 if the TPS API was successfully initialized.
+                         */
+                        int tps_init(int segv);
+
+                        /*
+                         * tps_create - Create TPS
+                         *
+                         * Create a TPS area and associate it to the current thread.
+                         *
+                         * Return: -1 if current thread already has a TPS, or in case of failure during
+                         * the creation (e.g. memory allocation). 0 if the TPS area was successfully
+                         * created.
+                         */
+                        int tps_create(void);
+
+                        /*
+                         * tps_destroy - Destroy TPS
+                         *
+                         * Destroy the TPS area associated to the current thread.
+                         *
+                         * Return: -1 if current thread doesn't have a TPS. 0 if the TPS area was
+                         * successfully destroyed.
+                         */
+                        int tps_destroy(void);
+
+                        /*
+                         * tps_read - Read from TPS
+                         * @offset: Offset where to read from in the TPS
+                         * @length: Length of the data to read
+                         * @buffer: Data buffer receiving the read data
+                         *
+                         * Read @length bytes of data from the current thread's TPS at byte offset
+                         * @offset into data buffer @buffer.
+                         *
+                         * Return: -1 if current thread doesn't have a TPS, or if the reading operation
+                         * is out of bound, or if @buffer is NULL, or in case of internal failure. 0 if
+                         * the TPS was successfully read from.
+                         */
+                        int tps_read(size_t offset, size_t length, char *buffer);
+
+                        /*
+                         * tps_write - Write to TPS
+                         * @offset: Offset where to write to in the TPS
+                         * @length: Length of the data to write
+                         * @buffer: Data buffer holding the data to be written
+                         *
+                         * Write @length bytes located in data buffer @buffer into the current thread's
+                         * TPS at byte offset @offset.
+                         *
+                         * If the current thread's TPS shares a memory page with another thread's TPS,
+                         * this should trigger a copy-on-write operation before the actual write occurs.
+                         *
+                         * Return: -1 if current thread doesn't have a TPS, or if the writing operation
+                         * is out of bound, or if @buffer is NULL, or in case of failure. 0 if the TPS
+                         * was successfully written to.
+                         */
+                        int tps_write(size_t offset, size_t length, char *buffer);
+
+                        /*
+                         * tps_clone - Clone TPS
+                         * @tid: TID of the thread to clone
+                         *
+                         * Clone thread @tid's TPS. In the first phase, the cloned TPS's content should
+                         * copied directly. In the last phase, the new TPS should not copy the cloned
+                         * TPS's content but should refer to the same memory page.
+                         *
+                         * Return: -1 if thread @tid doesn't have a TPS, or if current thread already
+                         * has a TPS, or in case of failure. 0 is TPS was successfully cloned.
+                         */
+                        int tps_clone(pthread_t tid);
+
+                        #endif /* _TPS_H */
+                    </code>
+               </pre>
+           </div>
+       </div>
+       
+       <p class="project_desc" id="first_paragraph">
+           I created a <i>semaphore struct</i> to contain queue of threads and number of threads able to share a common resource at the same time. For <i>sem_create</i>, it enters the critical section and then I memory allocated a semaphore. Afterwards, I set <i>threads</i> to a new queue and exit the critical section before setting count and returning the new semaphore. For <i>sem_destroy</i>, it enters the critical section and error checks for invalid cases like the semaphore being NULL or the
+           queue not being empty. Then I free the semaphore and then exit the critical section. For <i>sem_down</i>, it enters the critical section and checks if there are threads able to share a common resource, in which the count is decremented. Otherwise, I obtain the current TID and enqueue the thread to consequently
+           call <i>thread_block</i> before exiting the critical section. For <i>sem_up</i>, it enters the critical section and checks the length of the queue to see if there are blocked threads. If so, I dequeue the thread and unblock it. Otherwise, I increment the semaphore count field before exiting the critical section.
+       </p>
+       
+       <span id="more2" style="display: none">
+       
+           <p class="project_desc">
+               Initially, I created a single tps struct to contain everything I needed like the <i>TID</i> and <i>data</i>. The <i>tps_init</i> was fairly sparse only creating a queue. Before I could implement any further, I had to create a function called <i>find_by_tid</i> to pass into <i>queue_iterate</i> for checking each tid in the queue and seeing if the tids match. For <i>tps_create</i>, I first iterate through the queue to check if the thread already has a tps. If it does, then I return -1 but otherwise I malloc some data for the struct. Then, I access the struct to <i>mmap()</i> a new page and enqueue the object into the queue. For <i>tps_destroy</i>
+               I call <i>munmap()</i> to delete the memory page and delete the data from the queue. For <i>tps_read</i> I iterate through the queue and error check some fields. Then, I alter the page to be readable with <i>mprotect()</i> before going through a for loop to assign each index in the page into each index in the buffer before making the page unreadable. Similarly, I do almost the same process for <i>tps_write</i> except this time I make the page writable and go through a for loop that goes from the buffer to the page. As for the naive cloning, I set two structs for one doing the calling and the other being called. Then, I iterate through the queue for each tid and make the data called readable and the data calling writable so that I can write from the data calling to the data being called. Then I used <i>memcpy</i> to directly copy from one page to another before making both pages unreadable and unwritable.
+</p>
+
+           <p class="project_desc">
+               To distinguish between a regular seg fault and a tps seg fault caused by accessing a protected TPS area, I added a signal hander in our code as the instructions suggested. Once I got the <i>p_fault</i> variable I wanted to check this by creating a new function called <i>find_by_address</i>, which essentially was very similar to <i>find_by_tid</i>, but with addresses to find which element in the queue was causing the seg fault and check each element by calling the iteration function for the queue. However, I ran into issues where the <i>queue_iterate</i> was causing all of the memory addresses to be shifted to inexplicable locations which didn't work despite my efforts. Therefore, I decided to discard our call to <i>queue_iterate</i> and just create a <i>page_array</i> that keeps track of the addresses of pages in the queue. By looping through this array and comparing it to <i>p_fault</i> I was able to successfully have the error message print for the seg fault.
+</p>
+
+           <p class="project_desc">
+               For the last part, I had to readjust some of my initial implementations. I started by creating a new struct to accomodate for the new cloning policy. This meant removing the <i>data</i> field from the original struct and replacing it with a pointer to the new <i>page</i> struct. Now instead of being an inherent field in the struct, it can be disassociated from a new tps object. This new <i>page</i> struct contains the memory page and the counter that accounts for tps sharing a same memory page. So with this new structure, I modified the rest of the code to accommodate for this change. So essentially, when I <i>mmap</i> a page now, the <i>tps_data</i> struct points to the page, allowing for multiple to point to a single page. For <i>tps_clone</i>, I removed the <i>memcpy</i> and instead set the called page struct to the calling page struct before enqueue the calling data and incrementing the <i>shared_count</i>. This way, it merely shares the same memory page without having to create a new page every time. Then in <i>tps_write</i> I malloc a new page struct that would have a newly <i>mmap</i> page. I then use a for loop to copy the contents of the page in the original to the new one. Then I set the old page to the new page before decrementing the <i>share_count</i> now that they're not sharing the same page. Afterwards, I write using a for loop that assigns every index in the buffer to every index in the page.
+</p>
+       
+       </span>
+        
+       <button onclick="showMore2()" id="more_button2">Read More</button>
+       
+       <a name="Token Ring Protocol Simulation"></a>
+       
+       <h2 class="project">Token Ring Protocol Simulation</h2>
+       
+       <div class="tab">
+           <button class="tabselection3" onclick="showCode3(event, 'Phase2.java')" id="defaultTab3">Phase2.java</button>
+           <button class="tabselection3" onclick="showCode3(event, 'Event.java')">Event.java</button>
+           <button class="tabselection3" onclick="showCode3(event, 'Host.java')">Host.java</button>
+       </div>
+       
+       <div class="codewrapper">
+           <div id="Phase2.java" class="code3">
+               <pre>
+                    <code>
+                        import java.util.*;
+                        import java.util.concurrent.ThreadLocalRandom;
+
+                        public class Phase2 {
+                            private static double PROPDELAY=1e-5;  //Propagation Delay
+                            private static double R=12500000;  // converted to bytes
+                            public static int HOSTNUMBER = 25;
+                            public static double ARRIVRATE = 0.2;
+
+                            static LinkedList&lt;Event&gt; GEL=new LinkedList&lt;Event&gt;();  //Global Event List
+                            static LinkedList&lt;Event&gt; Frame=new LinkedList&lt;Event&gt;();  //Frame to store transfrring package
+                            static List&lt;LinkedList&lt;Event&gt;&gt; hosts = new ArrayList&lt;LinkedList&lt;Event&gt;&gt;();
+
+
+                            public static void main(String[] args) {
+                                int[] host_Number={10,25};
+                                double[] arrival_Rate={0.01, 0.05,0.1,0.2,0.3,0.5,0.6,0.7,0.8,0.9};
+
+                                for(int i=0;i&lt;2;i++){
+                                    for(int j=0;j&lt;10;j++) {
+                                        HOSTNUMBER = host_Number[i];
+                                        ARRIVRATE = arrival_Rate[j];
+                                        initThenRunSimulation();
+                                    }
+                                }
+                            }
+
+
+                            public static void initThenRunSimulation(){
+                                GEL = new LinkedList&lt;Event&gt;();
+                                Frame = new LinkedList&lt;Event&gt;();
+                                hosts = new ArrayList&lt;LinkedList&lt;Event&gt;&gt;();
+                                //initialize arraylist elements(objects of LinkedList)
+                                for (int i=0; i&lt;HOSTNUMBER; i++) {
+                                    hosts.add(new LinkedList&lt;Event&gt;());
+                                    Event event=new Event(negative_exponentially_distributed_time(ARRIVRATE),0,i,(int)(Math.random()*HOSTNUMBER), (int)(Math.random()*1455+64));	
+                                    GEL.add(event);
+                                }
+                                simulation();
+                            }
+
+                            public static void simulation() {
+                                double totalDelay=0;
+                                double time=0;
+                                double totalThroughput=0;
+                                double previousPacketFinishtime=0;
+                                double totalQueueDelayTime=0;
+                                int packetCount=0;
+                                Event tokenEvent=new Event(); 
+                                tokenEvent.setType(1);  //token
+                                tokenEvent.setFree(true);
+                                tokenEvent.setPosition(1);
+                                tokenEvent.setSource(1);
+                                tokenEvent.setEventTime(0);               //make it first event 
+                                GEL.add(tokenEvent);
+                                Collections.sort(GEL);		//sort GEL based on event time
+
+                                while(packetCount&lt;1000){                   //simulation start
+                                    //Pull out the event
+                                    Event curEvent = GEL.getFirst();
+                                    GEL.removeFirst();
+                                    time=curEvent.getEventTime();        //set the time to the event time
+
+                                    if(curEvent.getType()==0){        //if it is an arrival event
+                                        hosts.get(curEvent.getSource()).add(curEvent);   //add the event to the host  of the host
+
+                                        Event event=new Event();
+                                        event.setType(0);                  //set type to events
+                                        event.setSource(curEvent.getSource());  
+                                        event.setDest((int)(Math.random()*HOSTNUMBER));                      
+                                        while(event.getDest()==event.getSource()) event.setDest((int)(Math.random()*HOSTNUMBER));
+                                        //double eventTime, int type, int source, int dest, int size
+                                        double newArrivalTime = curEvent.getEventTime()+negative_exponentially_distributed_time(ARRIVRATE);
+                                        if(newArrivalTime&lt;previousPacketFinishtime) {
+                                            event.queueDelayTime = previousPacketFinishtime-newArrivalTime;
+                                            totalQueueDelayTime += previousPacketFinishtime-newArrivalTime;
+                                        }else
+                                            event.queueDelayTime = 0;
+                                        previousPacketFinishtime = 0;
+                                        event.setEventTime(newArrivalTime);
+                                        event.setSize((int)(Math.random()*1455));              
+                                        GEL.add(event);
+                                        Collections.sort(GEL);		//sort GEL based on event time
+                                    }
+                                    else{                           // if it is a token events, time to transfer package;
+                                        int bytes=0;
+                                        int hostNumber=curEvent.getPosition();   //position of the token 
+                                        if(curEvent.isFree()==true){     //if it is a free token try transfer data	
+                                            if(hosts.get(hostNumber).size()!=0){      					
+                                                while(!(hosts.get(hostNumber).isEmpty())){	//add all the data in the host
+                                                    Event temp=hosts.get(hostNumber).remove(0);
+                                                    bytes+=temp.getSize();				
+                                                    Frame.add(temp);				  
+                                                }	
+                                                insertTokEvent(curEvent,bytes, false);     //insert the next token that will start transfering
+                                            }													
+                                            else{                                 //no data in the host
+                                                insertTokEvent(curEvent,0, true);           //insert next token that roams around the ring.
+                                            }
+                                        }
+
+                                        else{                                 //if token is not free, transfer the packets
+                                            bytes=curEvent.getSize();
+                                            if(hostNumber==curEvent.getSource()){
+                                                Frame.clear();
+                                                bytes=0;
+                                            }
+                                            for(int i=0;i&lt;Frame.size();i++){  // if Frame has something to transfer
+                                                if(Frame.get(i).getDest()==hostNumber){
+                                                    previousPacketFinishtime +=time-Frame.get(i).getEventTime()+totalQueueDelayTime; 
+                                                    totalDelay+=time-Frame.get(i).getEventTime()+Frame.get(i).queueDelayTime; 
+                                                    packetCount+=1;    // increment sim packetCount
+                                                    totalThroughput+=Frame.get(i).getSize();
+                                                }
+                                            }  
+                                            insertTokEvent(curEvent, bytes, false);         //generate token/frame that transfers data
+                                        }                                       
+                                    }
+                                }
+
+                                System.out.println("Arrival Rate: "+ARRIVRATE+" ,Number of Host: "+HOSTNUMBER);
+                                System.out.println("Total ThroughPut per second: "+totalThroughput/time+" B/Sec.");
+                                System.out.println("Average Packet delay: "+totalDelay/packetCount+" Sec.");
+                                System.out.println("Total Size:"+ totalThroughput);
+                                System.out.println("Total Delay: "+totalDelay);
+                                System.out.println("Total Packets transferred: "+packetCount+"\n");
+                            }
+
+
+                            public static void insertTokEvent(Event previousEvent,int bytes, boolean isFree){  //generate token events
+                                Event event=new Event();     
+                                event.setType(1);                  
+                                event.setSource(previousEvent.getSource());         
+                                event.setEventTime(previousEvent.getEventTime()+PROPDELAY+bytes/R);   //the time is pretime+PROPDELAY+Dt
+                                event.setSize(bytes);            
+                                event.setFree(false);
+                                event.setNumberOfLinksTraversed(previousEvent.getNumberOfLinksTraversed()+1);
+                                event.setPosition((previousEvent.getPosition()+1)%HOSTNUMBER);
+                                if(previousEvent.getNumberOfLinksTraversed()==HOSTNUMBER || isFree){          //when tok came back to source or the hosts has no data to send    
+                                    event.setSource((previousEvent.getSource()+1)%HOSTNUMBER);   // token keeps on moving inside the ring
+                                    event.setFree(true);                     
+                                    event.setNumberOfLinksTraversed(0);    //reset 
+                                }
+                                GEL.add(event);                      
+                                Collections.sort(GEL);	//sort GEL based on event time
+                            }
+
+                            public static double negative_exponentially_distributed_time(double rate){
+                                double u;
+                                u = ThreadLocalRandom.current().nextDouble(0.0,1.0);
+                                return ((-1/rate)*Math.log(1-u));
+                            }
+                        }
+                    </code>
+               </pre>
+           </div>
+           
+           <div id="Event.java" class="code3">
+               <pre>
+                    <code>
+                            public class Event implements Comparable&lt;Event&gt;{
+                            private double eventTime;
+                            private int type;	//arrival event: 0, token event: 1;
+                            private int source;  //host source;
+                            private int dest; // destination host of the frame
+                            private int size; // size data in frame
+                            private int position; //position of token
+                            private boolean free; //true is free, false is not
+                            private int numberOfLinksTraversed;	// number of links token has traveled
+                            public double queueDelayTime;	// to keep track of queue delay
+
+                            @Override
+                            //a method to sort a arrayList by its eventTime;
+                            public int compareTo(Event t){
+                                double comparetime=((Event)t).eventTime;
+                                return (int) ((this.eventTime-comparetime)*100000000);
+                            }
+                            public Event() {
+                                // TODO Auto-generated constructor stub
+                            }
+                            public Event(double eventTime, int type, int source, int dest, int size)
+                            {
+                                this.eventTime = eventTime;
+                                this.type = type;
+                                this.source = source;
+                                if(dest == -1 || dest == source) {
+                                    int tmpDest = (int)(Math.random()*10);
+                                    while(tmpDest==source) tmpDest = ((int)(Math.random()*10));
+                                    this.dest = tmpDest;
+                                }else
+                                    this.dest = dest;
+                                this.size = size;
+                            }
+
+
+
+                            public double getEventTime() {
+                                return eventTime;
+                            }
+
+                            public void setEventTime(double eventTime) {
+                                this.eventTime = eventTime;
+                            }
+
+                            public int getType() {
+                                return type;
+                            }
+
+                            public void setType(int type) {
+                                this.type = type;
+                            }
+
+                            public int getSource() {
+                                return source;
+                            }
+
+                            public void setSource(int source) {
+                                this.source = source;
+                            }
+
+                            public int getDest() {
+                                return dest;
+                            }
+
+                            public void setDest(int dest) {
+                                this.dest = dest;
+                            }
+
+                            public int getSize() {
+                                return size;
+                            }
+
+                            public void setSize(int size) {
+                                this.size = size;
+                            }
+
+                            public int getPosition() {
+                                return position;
+                            }
+
+                            public void setPosition(int position) {
+                                this.position = position;
+                            }
+
+                            public boolean isFree() {
+                                return free;
+                            }
+
+                            public void setFree(boolean free) {
+                                this.free = free;
+                            }
+
+                            public int getNumberOfLinksTraversed() {
+                                return numberOfLinksTraversed;
+                            }
+
+                            public void setNumberOfLinksTraversed(int numberOfLinksTraversed) {
+                                this.numberOfLinksTraversed = numberOfLinksTraversed;
+                            }
+                        }
+                    </code>
+               </pre>
+           </div>
+           
+           <div id="Host.java" class="code3">
+               <pre>
+                    <code>
+                        import java.util.*;
+
+                        public class Host {
+                            public LinkedList&lt;Event&gt; queue=new LinkedList&lt;Event&gt;();
+                        }
+                    </code>
+               </pre>
+           </div>
+       </div>
+       
+       <h4 class="sections" id="first_paragraph">Intro:</h4>
+       <div class="Intro">
+           <p class="project_desc">
+               In this project, we were working on a simulation analysis of token passing protocol based LAN. We simulated for 10 hosts and 25 hosts at mean arrival rates of packets at each host : λ = 0.01, 0.05, 0.1, 0.2, 0.3, 0.5, 0.6, 0.7, 0.8, and 0.9 packets/sec.
+           </p>
+
+           <p class="project_desc">
+               The program simulates by having 10 or 25 host linkedlist&lt;Event&gt; inside ArrayList being
+               the ring, one frame event LinkedList, and a global event list linked list. We chose 1000 number of packets to be transferred because it would take reasonable amount of time and create good measure of data with 1000 packet per case of Simulation.
+           </p>
+
+           <p class="project_desc">
+               Ultimately, we used these variables (arrival rate, number of hosts) to observe how they might affect two parameters of interest: throughput and average packet delay.
+           </p>
+       </div>
+       
+       <span id="more3" style="display: none">
+
+           <h4 class="sections">Event Class Attributes:</h4>
+
+           <p class="project_desc">
+               private double eventTime; //Time for event to occur<br>
+               private int type; //arrival event: 0, token event: 1;<br>
+               private int source; //host source;<br>
+               private int dest; //destination host of the frame<br>
+               private int size; //size data in frame<br>
+               private int position; //position of token<br>
+               private boolean free; //true free, false not<br>
+               private int numberOfLinksTraversed; //number of links token has traveled<br>
+               public double queueDelayTime; //to keep track of queue delay
+           </p>
+
+           <h4 class="sections">Program Overview:</h4>
+
+           <p class="project_desc">
+               The program starts by initializing the hosts according to Host Number assigned and insert arrival event for each host, and create a token event as first event by putting 0 on to event time. Each arrival event will be pushed onto appropriate host when GEL loops through. What would actually happen is that token will be circulating the ring until first event of arrival arrives because it will be free until then. Once arrival event get pushed on to the host and be ready to get transferred, token will pick up the packet, encapsulate it into frame, and transfer it to the destination host that is addressed in the frame. We implemented token traveling by making each travel to link as an event and have token keep on travel around the ring until it hits the source host. It will also check If token reaches to the destination. Once it’s there, destination host will copy all the packets, which in our program, accumulates packet count, delays and bytes transferred. Delay was accumulated from token link travel at each token event of the frame and queue delay was calculated by subtracting previous transfer event’s finish time and current transfer event’s transfer scheduled time. After it was delivered and comes back to the source host, token will be freed, frame will be cleared. Then, Token will once again wait until next host to be ready to transfer. This would continue until packet counts hit 1000. After the 1000 counts, we generate total throughput-size/time to get the throughput and (total delay)/count to get the average package delay.
+           </p>
+
+           <h4 class="sections">Phase II Output:</h4>
+           <div class="Output">
+               <p class="project_desc">
+                   Arrival Rate: 0.01 ,Number of Host: 10<br>
+                   Total ThroughPut per second: 70.38373575283154 B/Sec.<br>
+                   Average Packet delay: 3.840718048576406E-4 Sec.<br>
+                   Total Size: 728566.0<br>
+                   Total Delay: 0.3840718048576406<br>
+                   Total Packets transferred: 1000
+               </p>
+
+               <p class="project_desc">
+                   Arrival Rate: 0.05 ,Number of Host: 10<br>
+                   Total ThroughPut per second: 356.43225608607906 B/Sec.<br>
+                   Average Packet delay: 3.896609227951835E-4 Sec.<br>
+                   Total Size: 722966.0<br>
+                   Total Delay: 0.3896609227951835<br>
+                   Total Packets transferred: 1000
+               </p>
+
+               <p class="project_desc">
+                   Arrival Rate: 0.1 ,Number of Host: 10<br>
+                   Total ThroughPut per second: 677.0326012412584 B/Sec.<br>
+                   Average Packet delay: 3.9668300072711194E-4 Sec.<br>
+                   Total Size: 727317.0<br>
+                   Total Delay: 0.39668300072711193<br>
+                   Total Packets transferred: 1000
+               </p>
+
+               <p class="project_desc">
+                   Arrival Rate: 0.2 ,Number of Host: 10<br>
+                   Total ThroughPut per second: 1450.3953658033709 B/Sec.<br>
+                   Average Packet delay: 3.7985674203184453E-4 Sec.<br>
+                   Total Size: 725508.0<br>
+                   Total Delay: 0.37985674203184455<br>
+                   Total Packets transferred: 1000
+               </p>
+
+               <p class="project_desc">
+                   Arrival Rate: 0.3 ,Number of Host: 10<br>
+                   Total ThroughPut per second: 2149.885196427586 B/Sec.<br>
+                   Average Packet delay: c Sec.<br>
+                   Total Size: 738379.0<br>
+                   Total Delay: 0.39843748523041583<br>
+                   Total Packets transferred: 1000
+               </p>
+
+               <p class="project_desc">
+                   Arrival Rate: 0.5 ,Number of Host: 10<br>
+                   Total ThroughPut per second: 3830.393704444364 B/Sec.<br>
+                   Average Packet delay: 3.9420618072281754E-4 Sec.<br>
+                   Total Size: 727521.0<br>
+                   Total Delay: 0.39420618072281755<br>
+                   Total Packets transferred: 1000
+               </p>
+
+               <p class="project_desc">
+                   Arrival Rate: 0.6 ,Number of Host: 10<br>
+                   Total ThroughPut per second: 4464.444103927258 B/Sec.<br>
+                   Average Packet delay: 3.911264667929873E-4 Sec.<br>
+                   Total Size: 738903.0<br>
+                   Total Delay: 0.3911264667929873<br>
+                   Total Packets transferred: 1000
+               </p>
+
+               <p class="project_desc">
+                   Arrival Rate: 0.7 ,Number of Host: 10<br>
+                   Total ThroughPut per second: 5091.136778246049 B/Sec.<br>
+                   Average Packet delay: 3.9378938899746046E-4 Sec.<br>
+                   Total Size: 723207.0<br>
+                   Total Delay: 0.39378938899746047<br>
+                   Total Packets transferred: 1000
+               </p>
+
+               <p class="project_desc">
+                   Arrival Rate: 0.8 ,Number of Host: 10<br>
+                   Total ThroughPut per second: 5696.273042527802 B/Sec.<br>
+                   Average Packet delay: 4.016013091099597E-4 Sec.<br>
+                   Total Size: 731717.0<br>
+                   Total Delay: 0.4016013091099597<br>
+                   Total Packets transferred: 1000
+               </p>
+
+               <p class="project_desc">
+                   Arrival Rate: 0.9 ,Number of Host: 10<br>
+                   Total ThroughPut per second: 6418.904932133973 B/Sec.<br>
+                   Average Packet delay: 3.897737553847441E-4 Sec.<br>
+                   Total Size: 719482.0<br>
+                   Total Delay: 0.3897737553847441<br>
+                   Total Packets transferred: 1000
+               </p>
+
+               <p class="project_desc">
+                   Arrival Rate: 0.01 ,Number of Host: 25<br>
+                   Total ThroughPut per second: 180.88040300446792 B/Sec.<br>
+                   Average Packet delay: 9.800102383560212E-4 Sec.<br>
+                   Total Size: 740760.0<br>
+                   Total Delay: 0.9800102383560212<br>
+                   Total Packets transferred: 1000
+               </p>
+
+               <p class="project_desc">
+                   Arrival Rate: 0.05 ,Number of Host: 25<br>
+                   Total ThroughPut per second: 895.6815689795505 B/Sec.<br>
+                   Average Packet delay: 9.846713672033965E-4 Sec.<br>
+                   Total Size: 725417.0<br>
+                   Total Delay: 0.9846713672033964<br>
+                   Total Packets transferred: 1000
+               </p>
+
+               <p class="project_desc">
+                   Arrival Rate: 0.1 ,Number of Host: 25<br>
+                   Total ThroughPut per second: 1826.8515850751546 B/Sec.<br>
+                   Average Packet delay: 9.723109496858972E-4 Sec.<br>
+                   Total Size: 718062.0<br>
+                   Total Delay: 0.9723109496858972<br>
+                   Total Packets transferred: 1000
+               </p>
+
+               <p class="project_desc">
+                   Arrival Rate: 0.2 ,Number of Host: 25<br>
+                   Total ThroughPut per second: 3734.724624787711 B/Sec.<br>
+                   Average Packet delay: 0.001001036002017254 Sec.<br>
+                   Total Size: 745295.0<br>
+                   Total Delay: 1.001036002017254<br>
+                   Total Packets transferred: 1000
+               </p>
+
+               <p class="project_desc">
+                   Arrival Rate: 0.3 ,Number of Host: 25<br>
+                   Total ThroughPut per second: 5472.946012397858 B/Sec.<br>
+                   Average Packet delay: 0.0010025001968092444 Sec.<br>
+                   Total Size: 731194.0<br>
+                   Total Delay: 1.0025001968092444<br>
+                   Total Packets transferred: 1000
+               </p>
+
+               <p class="project_desc">
+                   Arrival Rate: 0.5 ,Number of Host: 25<br>
+                   Total ThroughPut per second: 8338.980283583565 B/Sec.<br>
+                   Average Packet delay: 0.0010227562627828503 Sec.<br>
+                   Total Size: 728668.0<br>
+                   Total Delay: 1.0227562627828504<br>
+                   Total Packets transferred: 1000
+               </p>
+
+               <p class="project_desc">
+                   Arrival Rate: 0.6 ,Number of Host: 25<br>
+                   Total ThroughPut per second: 11307.1003784485 B/Sec.<br>
+                   Average Packet delay: 0.0010453040661019947 Sec.<br>
+                   Total Size: 736239.0<br>
+                   Total Delay: 1.0453040661019948<br>
+                   Total Packets transferred: 1000
+               </p>
+
+               <p class="project_desc">
+                   Arrival Rate: 0.7 ,Number of Host: 25<br>
+                   Total ThroughPut per second: 13083.596561166582 B/Sec.<br>
+                   Average Packet delay: 0.0010163627691262586 Sec.<br>
+                   Total Size: 721714.0<br>
+                   Total Delay: 1.0163627691262587<br>
+                   Total Packets transferred: 1000
+               </p>
+
+               <p class="project_desc">
+                   Arrival Rate: 0.8 ,Number of Host: 25<br>
+                   Total ThroughPut per second: 15161.408651590209 B/Sec.<br>
+                   Average Packet delay: 0.0010310796735103316 Sec.<br>
+                   Total Size: 729929.0<br>
+                   Total Delay: 1.0310796735103316<br>
+                   Total Packets transferred: 1000
+               </p>
+
+               <p class="project_desc">
+                   Arrival Rate: 0.9 ,Number of Host: 25<br>
+                   Total ThroughPut per second: 16985.863562769922 B/Sec.<br>
+                   Average Packet delay: 0.0010072891087256582 Sec.<br>
+                   Total Size: 735991.0<br>
+                   Total Delay: 1.0072891087256581<br>
+                   Total Packets transferred: 1000
+               </p>
+           </div>
+
+           <h4 class="sections">Graphs:</h4>
+
+           <div class="graphs">
+               <img id="graph1" class="graph_left" src="images/image1.png">
+               <img id="graph2" class="graph_right" src="images/image2.png">
+               <img id="graph3" class="graph_left" src="images/image4.png">
+               <img id="graph4" class="graph_right" src="images/image3.png">
+           </div>
+           
+           <h4 class="sections">Analysis:</h4>
+
+           <p class="project_desc">
+               Average packet delay was not really dependent of arrival rate in our 10 host simulation because our transfer speed was very fast, the propagation delay wasn’t too high, and the arrival rate wasn’t high enough to keep our ring busy enough even at 0.9. Essentially, with 10 hosts the average packet delay did not have any notable trend, suggesting that perhaps more than 10 hosts would be required to see more delay occurring the token ring. Therefore, it was observed that the average packet delay only changed significantly once the number of hosts got
+               increased to 25. Average delay was generally 2.5 times higher than the 10 host simulation and it actually showed an increasing trend as the arrival rate increased. Furthermore, this increasing average packet delay with higher arrival rate trend may imply that having more than 25 hosts could possibly reveal a more distinct increasing trend. On the other hand, throughput increased fairly linearly as arrival rate increased. This happened because our network was capable of handling most intense amount of traffic. However, the difference in the rate of increasing throughput over arrival rate between 10 hosts compared to 25 hosts was marginal and not very significant. Despite there being no difference in the rate of increasing throughput, there were overall, higher throughput values that were dependent upon the number of hosts. With 25 hosts, the throughput for each arrival rate was somewhere between 2 to 3 times more bytes/second than a token ring with 10 hosts. Most likely, the data results suggest that even if more hosts (i.e. over 25 hosts) are included in the token ring simulation, the rate of increasing throughput would be similar.
+           </p>
+
+       </span>
+           
+       <button onclick="showMore3()" id="more_button3">Read More</button>
+       
+       <a name="Content-Aware Image Resizing"></a>
+       
+       <h2 class="project">Content-Aware Image Resizing</h2>
+       
+       <div class="tab">
+           <button class="tabselection4" onclick="showCode4(event, 'emap.m')" id="defaultTab4">emap.m</button>
+           <button class="tabselection4" onclick="showCode4(event, 'seam.m')">seam.m</button>
+           <button class="tabselection4" onclick="showCode4(event, 'eimg.m')">eimg.m</button>
+           <button class="tabselection4" onclick="showCode4(event, 'hseam.m')">hseam.m</button>
+           <button class="tabselection4" onclick="showCode4(event, 'vseam.m')">vseam.m</button>
+           <button class="tabselection4" onclick="showCode4(event, 'rhgt.m')">rhgt.m</button>
+           <button class="tabselection4" onclick="showCode4(event, 'rwdt.m')">rwdt.m</button>
+           <button class="tabselection4" onclick="showCode4(event, 'scrw.m')">scrw.m</button>
+           <button class="tabselection4" onclick="showCode4(event, 'scrh.m')">scrh.m</button>
+       </div>
+       
+       <div class="codewrapper">
+           <div id="emap.m" class="code4">
+               <pre>
+                   <code>
+                        function cumulativeEnergyMap = cumulative_minimum_energy_map(energyImage, seamDirection)
+                        %to compute minimum cumulative energy
+
+                        energyIm = energyImage;
+                        [M,N] = size(energyIm);
+                        P = zeros(M, N, 'double');
+
+
+                        if (strcmp(seamDirection, 'HORIZONTAL') == 1)
+                            for y = 1:N
+                                for x = 1:M
+                                    P(x,y) = energyIm(x,y);
+                                    if(x &gt; 1 &amp;&amp; y &gt; 1 &amp;&amp; x &lt; M)
+                                        P(x,y) = energyIm(x,y) + min(min(P(x-1,y-1),P(x,y-1)),P(x+1,y-1));
+                                    end
+                                end
+                            end
+                        elseif (strcmp(seamDirection,'VERTICAL') == 1)
+                            for x = 1:M
+                                for y = 1:N
+                                    P(x,y) = energyIm(x,y);
+                                    if(y &gt; 1 &amp;&amp; x &gt; 1 &amp;&amp; y &lt; N)
+                                        P(x,y) = energyIm(x,y) + min(min(P(x-1,y-1),P(x-1,y)),P(x-1,y+1));
+                                    end
+                                end
+                            end
+                        end
+                        cumulativeEnergyMap = P;
+
+                        end
+                   </code>
+               </pre>
+           </div>
+           
+           <div id="seam.m" class="code4">
+               <pre>
+                    <code>
+                        function display_seam(im, seam, seamDirection)
+                        %to display the selected type of seam on top of an image
+
+                        regIm = imread(im);
+
+                        if (strcmp(seamDirection, 'HORIZONTAL') == 1)
+                            x = 1:1:640;
+                            figure;
+                            image(regIm);
+                            hold on;
+                            plot(x,seam,'r');
+                            axis([1 640 1 480]);
+
+                        elseif (strcmp(seamDirection, 'VERTICAL') == 1)
+                            y = 1:1:480;
+                            figure;
+                            image(regIm);
+                            hold on;
+                            plot(seam,y,'r');
+                            axis([1 640 1 480]);
+                        end
+
+                        end
+                    </code>
+               </pre>
+           </div>
+           
+           <div id="eimg.m" class="code4">
+               <pre>
+                    <code>
+                        function energyImage = energy_image(im)
+                        %to compute the energy at each pixel using the magnitude of the x and y
+                        %gradients
+
+                        greyImage = rgb2gray(im);
+
+                        [energyImage, ~] = imgradient(double(greyImage), 'sobel');
+
+                        end
+                    </code>
+               </pre>
+           </div>
+           
+           <div id="hseam.m" class="code4">
+               <pre>
+                    <code>
+                        function horizontalSeam = find_optimal_horizontal_seam(cumulativeEnergyMap)
+                        %to computer the optimal horizontal seam
+
+                        numRow = size(cumulativeEnergyMap, 1);
+                        numCol = size(cumulativeEnergyMap, 2);
+                        n = numCol;
+                        horizontalSeam = zeros(1,numCol);
+
+                        [minColVal, minIndex] = min(cumulativeEnergyMap(:,numCol));
+
+                        horizontalSeam(n) = minIndex;
+
+                        numCol = numCol - 1;
+
+                        rowVector1 = zeros(1,2);
+                        rowVector2 = zeros(1,3);
+                        n = n - 1;
+
+                        for i = numCol:-1:1
+                            if(minIndex + 1 &gt; numRow)
+                                rowVector1(1) = cumulativeEnergyMap(minIndex - 1,i);
+                                rowVector1(2) = cumulativeEnergyMap(minIndex,i);
+                                [newMin,row] = min(rowVector1);
+                                if (row == 1)
+                                    horizontalSeam(n) = minIndex - 1;
+                                    minIndex = minIndex - 1;
+                                end
+                            elseif(minIndex - 1 &lt; 1)
+                                rowVector1(1) = cumulativeEnergyMap(minIndex,i);
+                                rowVector1(2) = cumulativeEnergyMap(minIndex + 1,i);
+                                [newMin,row] = min(rowVector1);
+                                if (row == 2)
+                                    horizontalSeam(n) = minIndex + 1;
+                                    minIndex = minIndex + 1;
+                                end
+                            else
+                                rowVector2(1) = cumulativeEnergyMap(minIndex - 1,i);
+                                rowVector2(2) = cumulativeEnergyMap(minIndex,i);
+                                rowVector2(3) = cumulativeEnergyMap(minIndex + 1,i);
+                                [newMin,row] = min(rowVector2);
+                                if (row == 1)
+                                    horizontalSeam(n) = minIndex - 1;
+                                    minIndex = minIndex - 1;
+                                elseif (row == 3)
+                                    horizontalSeam(n) = minIndex + 1;
+                                    minIndex = minIndex + 1;
+                                end
+                            end
+                            horizontalSeam(n) = minIndex;
+                            n = n - 1;
+                        end
+
+
+                        end
+                    </code>
+               </pre>
+           </div>
+           
+           <div id="vseam.m" class="code4">
+               <pre>
+                    <code>
+                        function verticalSeam = find_optimal_vertical_seam(cumulativeEnergyMap)
+                        %to computer the optimal vertical seam
+
+                        numRow = size(cumulativeEnergyMap, 1);
+                        numCol = size(cumulativeEnergyMap, 2);
+                        n = numRow;
+
+                        verticalSeam = zeros(1,numRow);
+
+                        [minRowVal, minIndex] = min(cumulativeEnergyMap(numRow,:));
+
+                        verticalSeam(n) = minIndex;
+
+                        numRow = numRow - 1;
+                        n = n - 1;
+
+                        columnVector1 = zeros(1,2);
+                        columnVector2 = zeros(1,3);
+
+                        for i = numRow:-1:1
+                            if(minIndex + 1 &gt; numCol)
+                                columnVector1(1) = cumulativeEnergyMap(i,minIndex - 1);
+                                columnVector1(2) = cumulativeEnergyMap(i,minIndex);
+                                [newMin,col] = min(columnVector1);
+                                if (col == 1)
+                                    verticalSeam(n) = minIndex - 1;
+                                    minIndex = minIndex - 1;
+                                end
+                            elseif(minIndex - 1 &lt; 1)
+                                columnVector1(1) = cumulativeEnergyMap(i,minIndex);
+                                columnVector1(2) = cumulativeEnergyMap(i,minIndex + 1);
+                                [newMin,col] = min(columnVector1);
+                                if (col == 2)
+                                    verticalSeam(n) = minIndex + 1;
+                                    minIndex = minIndex + 1;
+                                end
+                            else
+                                columnVector2(1) = cumulativeEnergyMap(i,minIndex - 1);
+                                columnVector2(2) = cumulativeEnergyMap(i,minIndex);
+                                columnVector2(3) = cumulativeEnergyMap(i,minIndex + 1);
+                                [newMin,col] = min(columnVector2);
+                                if (col == 1)
+                                    verticalSeam(n) = minIndex - 1;
+                                    minIndex = minIndex - 1;
+                                elseif (col == 3)
+                                    verticalSeam(n) = minIndex + 1;
+                                    minIndex = minIndex + 1;
+                                end
+                            end
+                            verticalSeam(n) = minIndex;
+                            n = n - 1;
+                        end
+
+                        end
+                    </code>
+               </pre>
+           </div>
+           
+           <div id="rhgt.m" class="code4">
+               <pre>
+               <code>
+                    function [reducedColorImage, reducedEnergyImage] = reduce_height(im, energyImage)
+                    %returns reduced color image and reduced energy image after reducing height
+
+                    direction = 'HORIZONTAL';
+                    emap = cumulative_minimum_energy_map(energyImage, direction);
+
+                    numRow = size(im, 1);
+                    numCol = size(im, 2);
+
+                    seam = find_optimal_horizontal_seam(emap);
+
+                    for k = 1:numCol
+
+                        if(seam(k) + 1 &gt; numRow)
+                            reducedColorImage(:, k, :) = im([1:end-1], k, :);
+                            reducedEnergyImage(:, k) = energyImage([1:end-1], k);
+                        elseif(seam(k) - 1 &lt; 1)
+                            reducedColorImage(:, k, :) = im([2:end], k, :);
+                            reducedEnergyImage(:, k) = energyImage([2:end], k);
+                        else
+                            reducedColorImage(:, k, :) = im([1:seam(k)-1, seam(k)+1:end], k, :);
+                            reducedEnergyImage(:, k) = energyImage([1:seam(k)-1, seam(k)+1:end], k);
+                        end
+                    end
+
+                    end
+               </code>
+               </pre>
+           </div>
+           
+           <div id="rwdt.m" class="code4">
+               <pre>
+                    <code>
+                        function [reducedColorImage, reducedEnergyImage] = reduce_width(im, energyImage)
+                        %returns the reduced color image and reduced energy image after reducing
+                        %width
+
+                        direction = 'VERTICAL';
+                        emap = cumulative_minimum_energy_map(energyImage, direction);
+
+                        numRow = size(im, 1);
+                        numCol = size(im, 2);
+
+                        seam = find_optimal_vertical_seam(emap);
+
+                        for k = 1:numRow
+
+                            if(seam(k) + 1 &gt; numCol)
+                                reducedColorImage(k, :, :) = im(k, [1:end-1], :);
+                                reducedEnergyImage(k, :) = energyImage(k, [1:end-1]);
+                            elseif(seam(k) - 1 &lt; 1)
+                                reducedColorImage(k, :, :) = im(k, [2:end], :);
+                                reducedEnergyImage(k, :) = energyImage(k, [2:end]);
+                            else
+                                reducedColorImage(k, :, :) = im(k,[1:seam(k)-1, seam(k)+1:end], :);
+                                reducedEnergyImage(k, :) = energyImage(k,[1:seam(k)-1, seam(k)+1:end]);
+                            end
+
+                        end
+
+                        end
+                    </code>
+               </pre>
+           </div>
+           
+           <div id="scrw.m" class="code4">
+               <pre>
+                    <code>
+                        clc;clear;close all;
+
+                        load inputSeamCarvingPrague.jpg;
+                        load inputSeamCarvingMall.jpg
+
+                        colorIm1 = imread('inputSeamCarvingPrague.jpg');
+                        colorIm2 = imread('inputSeamCarvingMall.jpg');
+
+                        energyImage1 = energy_image(colorIm1);
+                        energyImage2 = energy_image(colorIm2);
+
+                        for i = 1:100
+                        [color, energy] = reduce_width(colorIm1,energyImage1);
+                        colorIm1 = color;
+                        energyImage1 = energy;
+                        end
+                        figure;
+                        imagesc(color);
+
+                        for i = 1:100
+                        [color, energy] = reduce_width(colorIm2,energyImage2);
+                        colorIm2 = color;
+                        energyImage2 = energy;
+                        end
+                        figure;
+                        imagesc(color);
+                    </code>
+               </pre>
+           </div>
+           
+           <div id="scrh.m" class="code4">
+               <pre>
+                    <code>
+                        clc;clear;close all;
+
+                        load inputSeamCarvingPrague.jpg;
+                        load inputSeamCarvingMall.jpg
+
+                        colorIm1 = imread('inputSeamCarvingPrague.jpg');
+                        colorIm2 = imread('inputSeamCarvingMall.jpg');
+
+                        energyImage1 = energy_image(colorIm1);
+                        energyImage2 = energy_image(colorIm2);
+
+                        for i = 1:50
+                        [color, energy] = reduce_height(colorIm1,energyImage1);
+                        colorIm1 = color;
+                        energyImage1 = energy;
+                        end
+                        figure;
+                        imagesc(color);
+
+
+                        for i = 1:50
+                        [color, energy] = reduce_height(colorIm2,energyImage2);
+                        colorIm2 = color;
+                        energyImage2 = energy;
+                        end
+                        figure;
+                        imagesc(color);
+
+                    </code>
+               </pre>
+           </div>
+       </div>
+       
+       <h4 class="sections" id="first_paragraph">Incremental Progression:</h4>
+       <div class="Progression">
+           <div class="vision_img_align">
+               
+           <img class="vision_img1" src="images/images/image1.png">
+           
+           <img class="vision_img2" src="images/images/image2.jpg">
+           
+           <img class="vision_img3" src="images/images/image3.jpg">
+           
+           <img class="vision_img4" src="images/images/image4.jpg">
+           
+           </div>   
+               
+           <p class="project_desc">
+               From the original picture we can observe the contrasts of color in the outlines of the building and the leaves and some of the water reflections. Thus, the horizontal energy map shows higher energy near the boat, buildings, and tree but less in the sky and parts of the water. The vertical map, on the other hand, shows that the left and right sides do not contain important information which is true. Also, the sky has an even color and thus has less energy, becoming a source to take away from.
+           </p>
+           
+           <div class="vision_img_align">
+           <img class="vision_img5" src="images/images/image5.jpg">
+           </div>
+               
+           <p class="project_desc">
+               This horizontal seam is optimal because passes through mostly the sky and tries to avoid going
+               through too many buildings. It also goes through the tree which is another part of the image that has low energy.
+           </p>
+
+           <div class="vision_img_align">
+           <img class="vision_img6" src="images/images/image7.jpg">
+           </div>
+           
+           <p class="project_desc">
+               While difficult to see, the first vertical seam here is at the right most edge of the image. This is a valid seam because the water, small part of the bridge, and the sky are all low energy. On the left side, there is a lot of building so it would make sense to start at the right where the only structure being removed would be the last pixels of the bridge.
+           </p>
+
+           <div class="vision_img_align">
+           <img class="vision_img7" src="images/images/image8.jpg">
+           </div>
+           <div class="vision_img_align">
+           <img class="vision_img8" src="images/images/image9.png">
+           </div>
+           
+           <p class="project_desc">
+               Given the energy image with a “Sobel” filter applied to it, we can observe that the distinctions of color are not as “sharp”; we do not see accentuated lines for the buildings when we look at the cumulative energy map. While the seam isn’t completely invalid, this horizontal seam is considerably less optimal as it passes through buildings that should have high energy. If this seam removal continues, we could possibly see changes to the buildings where they might become shorter or etc.
+           </p>
+       </div>
+       
+       <span id="more4" style="display: none">
+
+           <h4 class="sections">Testing Results:</h4>
+           <div class="Results">
+               <div class="vision_img_align">
+               <img class="vision_img9" src="images/images/image11.png">
+               </div>
+                   
+               <p class="project_desc">
+                   Original dimensions: 615 x 408<br>
+                   Reduced dimensions: 545 x 308<br>
+                   Resized dimensions: 540 x 300<br><br>
+                   Vertical seams were reduced by 70 seams and then horizontal seams were reduced by 100 seams.<br><br>
+                   We can see that the changes for this image are relatively minor between all three. The reduced version of the original image clearly takes away horizontal seams from the sky and removes vertical seams from the middle to left side. The body of water, beach, and mountains are clearly visible for all three images. However, the reduced achieves this by removing seams and thus does not compressed areas of the landscape. Luckily for this image the compression of dimensions is less obvious.
+               </p>
+               
+               <div class="vision_img_align">
+               <img class="vision_img10" src="images/images/image12.png">
+               </div>
+                   
+               <p class="project_desc">
+                   Original dimensions: 259 x 194<br>
+                   Reduced dimensions: 209 x 144<br>
+                   Resized dimensions: 200 x 150<br><br>
+                   Vertical seams were removed 50 times and then horizontal seams were removed 50 times.<br><br>
+                   Here the reduced version of the image omits some of the ducks from the left edge. This is not desirable as the ducks should be important to the image. The resized version actually achieves the job better, however when looking at the center duck as the object of very high energy, we can observe that the reduced version doesn’t distort the image as much.
+               </p>
+
+               <div class="vision_img_align">
+               <img class="vision_img11" src="images/images/image10.png">
+               </div>
+                   
+               <p class="project_desc">
+                   Original dimensions: 450 x 299<br>
+                   Reduced dimensions: 350 x 199<br>
+                   Resized dimensions: 350 x 200<br><br>
+                   Vertical seams were removed from the image 100 times first and then horizontal seams were removed from the image 100 times as well.<br><br>
+                   The reduced version of this image removes horizontal seams from the sky and vertical seams from the left and right edges. By doing this, we can see that while some of the letters in the background get cut off on the left side, the main high energy object (black car) is not distorted or removed in any way. On the other hand, the resized version of the original image has clear distortion from the compression of dimensions. There is a lot of lost detail on the tires and the metal plates on the wheel.
+               </p>
+           </div>
+
+       </span>
+
+       <button onclick="showMore4()" id="more_button4">Read More</button>
+       
+       <div class="footer">
+            <div class="social_icons_bottom">
+               <a class="bottom_icons" href="https://www.facebook.com/kevin.chung.129" target="_blank"><img class="social_icons" title="Facebook" alt="Facebook" src="images/Facebook%20Icon.png"></a>
+               
+               <a href="https://www.instagram.com/tda_160/?hl=en" target="_blank"><img class="social_icons" title="Instagram" alt="Instagram" src="images/Instagram%20Icon.png"></a>
+               
+               <a href="https://twitter.com/?lang=en" target="_blank"><img class="social_icons" title="Twitter" alt="Twitter" src="images/Twitter%20Icon.png"></a>
+               
+               <a href="https://www.linkedin.com/in/kevin-chung-1a8ab7132?trk=nav_responsive_tab_profile" target="_blank"><img class="social_icons" title="Linkedin" alt="Linkedin" src="images/Linkedin%20Icon.png"></a>
+            </div>
+            <i>Created by Kevin Chung</i>
+       </div>
+       
+       <script src="javascript/jquery-3.1.0.min.js"></script>
+       <script src="javascript/dropdown-menu.js">
+       </script>
+       <script src="javascript/showCode.js">
+       </script>
+       <script src="javascript/showMore.js">
+       </script>
+   </body>
+</html>
