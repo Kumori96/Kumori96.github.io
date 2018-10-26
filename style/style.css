@@ -576,3 +576,103 @@ div.footer {
 }
 
 
+div.footer_contact {
+    position: relative;
+    text-align: center;
+    padding-bottom: 23px;
+    padding-top: 120px;
+    bottom: 0;
+    width: 100%;
+    font-size: 10pt;
+}
+
+
+
+@media screen and (min-height: 800px) {
+    div.footer_contact {
+        position: relative;
+        text-align: center;
+        padding-bottom: 23px;
+        padding-top: 280px;
+        bottom: 0;
+        width: 100%;
+        font-size: 10pt;
+    }
+}
+
+
+
+/*Temporary Styling before adding content!!*/
+div.footer_music {
+    position: relative;
+    text-align: center;
+    padding-bottom: 23px;
+    padding-top: 120px;
+    bottom: 0;
+    width: 100%;
+    font-size: 10pt;
+}
+
+
+@media screen and (min-height: 800px) {
+    div.footer_music {
+        position: relative;
+        text-align: center;
+        padding-bottom: 23px;
+        padding-top: 320px;
+        bottom: 0;
+        width: 100%;
+        font-size: 10pt;
+    }
+}
+
+
+div.footer_watches {
+    position: relative;
+    text-align: center;
+    padding-bottom: 23px;
+    padding-top: 120px;
+    bottom: 0;
+    width: 100%;
+    font-size: 10pt;
+}
+
+
+
+@media screen and (min-height: 800px) {
+    div.footer_watches {
+        position: relative;
+        text-align: center;
+        padding-bottom: 23px;
+        padding-top: 320px;
+        bottom: 0;
+        width: 100%;
+        font-size: 10pt;
+    }
+}
+
+
+
+div.footer_knives {
+    position: relative;
+    text-align: center;
+    padding-bottom: 23px;
+    padding-top: 120px;
+    bottom: 0;
+    width: 100%;
+    font-size: 10pt;
+}
+
+
+
+@media screen and (min-height: 800px) {
+    div.footer_knives {
+        position: relative;
+        text-align: center;
+        padding-bottom: 23px;
+        padding-top: 320px;
+        bottom: 0;
+        width: 100%;
+        font-size: 10pt;
+    }
+}
